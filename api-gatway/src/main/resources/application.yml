@@ -1,0 +1,14 @@
+server:
+  port: 8085
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: menuItems
+          uri: http://localhost:8081/
+          predicates:
+            - Path=/api/**
+        - id: restaurant
+          uri: http://localhost:8082/
+          predicates:
+            - Path=/restaurant/**
