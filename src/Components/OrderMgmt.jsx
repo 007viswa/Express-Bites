@@ -1,260 +1,169 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
+import '../OrderMgmt.css'; // This is where our new CSS lives!
 import Header from './Header';
-import Footer from './Footer';
-import { useAuth } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
-import '../OrderMgmt.css'; // Import the CSS file
-import OrderCard from './OrderCard'; // New import
-import OrderDetailsModal from './OrderDetailsModal'; // New import
-import OrderFilter from './OrderFilter'; // New import
-import LoadingSkeleton from './LoadingSkeleton'; // New import
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'; // For empty state icon
-import { faBoxOpen, faSignInAlt } from '@fortawesome/free-solid-svg-icons';
-
-const OrderMgmt = ({ onSignInClick }) => {
-    const auth = useAuth();
+ 
+const OrderMgmt = () => {
+    const API_BASE_URL = 'http://localhost:1111/order'; // Your Spring Boot backend URL
+ 
     const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('current'); // 'current' or 'past'
-    const [filterStatus, setFilterStatus] = useState('All'); // 'All', 'Processing', 'Delivered', 'Cancelled', 'Pending'
-    const [selectedOrder, setSelectedOrder] = useState(null); // For modal details
-
-    // Mock Data for demonstration
-    const allMockOrders = useMemo(() => [
-        {
-            id: 'ORD001',
-            date: '2025-05-28',
-            time: '19:30',
-            total: 25.50,
-            status: 'Delivered',
-            restaurant: { name: 'Spice Route', address: '123 Main St, Anytown' },
-            items: [
-                { name: 'Chicken Biryani', qty: 1, price: 15.00, notes: '' },
-                { name: 'Garlic Naan', qty: 2, price: 2.75, notes: '' },
-                { name: 'Coca-Cola', qty: 1, price: 2.00, notes: '' }
-            ],
-            deliveryAddress: 'Apt 4B, 789 Oak Ave, Anytown',
-            deliveryFee: 3.00,
-            serviceFee: 1.00,
-            paymentMethod: 'Credit Card',
-            isPast: true // Mark as past order
-        },
-        {
-            id: 'ORD002',
-            date: '2025-06-01',
-            time: '12:45',
-            total: 18.00,
-            status: 'Processing',
-            restaurant: { name: 'Pizza Palace', address: '456 Elm St, Anytown' },
-            items: [
-                { name: 'Pepperoni Pizza (Large)', qty: 1, price: 18.00, notes: 'Extra cheese' }
-            ],
-            deliveryAddress: 'House 12, 101 Pine Rd, Anytown',
-            deliveryFee: 2.50,
-            serviceFee: 0.50,
-            paymentMethod: 'Cash on Delivery',
-            isPast: false // Mark as current order
-        },
-        {
-            id: 'ORD003',
-            date: '2025-05-20',
-            time: '14:00',
-            total: 30.00,
-            status: 'Cancelled',
-            restaurant: { name: 'Green Garden', address: '789 Birch Ave, Anytown' },
-            items: [
-                { name: 'Vegan Burger', qty: 1, price: 12.00, notes: 'No pickles' },
-                { name: 'Sweet Potato Fries', qty: 1, price: 6.00, notes: '' },
-                { name: 'Green Smoothie', qty: 1, price: 5.00, notes: '' }
-            ],
-            deliveryAddress: 'Office 301, 200 Cedar Ln, Anytown',
-            deliveryFee: 3.00,
-            serviceFee: 1.00,
-            paymentMethod: 'Online Banking',
-            isPast: true // Mark as past order
-        },
-        {
-            id: 'ORD004',
-            date: '2025-06-02',
-            time: '18:00',
-            total: 12.50,
-            status: 'Pending',
-            restaurant: { name: 'Burger Joint', address: '111 Oak St, Anytown' },
-            items: [
-                { name: 'Classic Burger', qty: 1, price: 9.00, notes: '' },
-                { name: 'French Fries', qty: 1, price: 3.50, notes: '' }
-            ],
-            deliveryAddress: 'Apt 1A, 555 Maple Dr, Anytown',
-            deliveryFee: 2.00,
-            serviceFee: 0.50,
-            paymentMethod: 'Credit Card',
-            isPast: false // Mark as current order
-        },
-        {
-            id: 'ORD005',
-            date: '2025-05-15',
-            time: '20:00',
-            total: 40.00,
-            status: 'Delivered',
-            restaurant: { name: 'Sushi Spot', address: '999 Pine St, Anytown' },
-            items: [
-                { name: 'California Roll', qty: 1, price: 15.00, notes: '' },
-                { name: 'Spicy Tuna Roll', qty: 1, price: 16.00, notes: '' },
-                { name: 'Miso Soup', qty: 2, price: 4.50, notes: '' }
-            ],
-            deliveryAddress: 'House 7, 222 Willow Ct, Anytown',
-            deliveryFee: 4.00,
-            serviceFee: 1.00,
-            paymentMethod: 'PayPal',
-            isPast: true // Mark as past order
-        }
-    ], []); // Memoize mock data
-
+    const [filterStatus, setFilterStatus] = useState('All'); // 'All', 'PENDING', 'DELIVERED', etc.
+ 
     useEffect(() => {
-        if (auth.isLoggedIn && auth.jwtToken) {
-            setLoading(true);
-            setError(null);
-            // Simulate API call with a delay
-            const fetchUserOrders = async () => {
+        console.log(`Frontend connecting to backend at: ${API_BASE_URL}`);
+    }, []);
+ 
+    useEffect(() => {
+        let statusToFilter = filterStatus;
+        if (activeTab === 'current' && filterStatus === 'All') {
+            statusToFilter = 'PENDING';
+        } else if (activeTab === 'past' && filterStatus === 'All') {
+            statusToFilter = 'DELIVERED';
+        }
+        fetchAllOrders(statusToFilter);
+    }, [activeTab, filterStatus]);
+ 
+    const fetchAllOrders = async (status) => {
+        setLoading(true);
+        setError(null);
+ 
+        const url = status && status !== 'All' ? `${API_BASE_URL}/list?status=${status}` : `${API_BASE_URL}/list`;
+        console.log(`Fetching orders from: ${url}`);
+ 
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Raw backend response on error:', errorText);
+                let errorMessage = `HTTP error! Status: ${response.status}`;
                 try {
-                    // In a real application, you'd fetch from your order management microservice
-                    // const response = await fetch('http://localhost:XXXX/order/my-orders', {
-                    //     headers: {
-                    //         'Authorization': `Bearer ${auth.jwtToken}`
-                    //     }
-                    // });
-                    // if (!response.ok) {
-                    //     throw new Error(`Failed to fetch orders: ${response.statusText}`);
-                    // }
-                    // const data = await response.json();
-                    // setOrders(data);
-
-                    // Simulate network delay
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    setOrders(allMockOrders);
-
-                } catch (err) {
-                    console.error("Error fetching orders:", err);
-                    setError("Failed to load orders. Please try again.");
-                } finally {
-                    setLoading(false);
+                    const errorJson = JSON.parse(errorText);
+                    errorMessage += ` - ${errorJson.message || errorJson.error || 'Unknown backend error'}`;
+                } catch (e) {
+                    errorMessage += ` - ${errorText}`;
                 }
-            };
-            fetchUserOrders();
-        } else {
-            setLoading(false); // If not logged in, no need to load orders
-            setOrders([]);
+                throw new Error(errorMessage);
+            }
+            const data = await response.json();
+            console.log('Successfully fetched data:', data);
+            setOrders(data);
+        } catch (err) {
+            console.error('Error fetching orders:', err);
+            setError(
+                `Failed to connect to the backend: ${err.message}. Please check the following: \n\n` +
+                `1. **Backend Running?**: Ensure your Spring Boot application is running on \`http://localhost:1111\`. \n` +
+                `2. **CORS Configuration**: Verify your backend's \`@CrossOrigin\` annotation in \`OrderController\` is \`@CrossOrigin("http://localhost:5176")\`. \n` +
+                `3. **Backend Restart**: Remember to restart your Spring Boot backend after *any* code changes (especially CORS). \n` +
+                `4. **Network/Firewall**: Temporarily disable any local firewalls or antivirus that might block ports. \n` +
+                `5. **Port Availability**: Confirm port 8083 is not in use by another application. \n` +
+                `6. **Database Data**: Ensure your backend database contains order data.`
+            );
+        } finally {
+            setLoading(false);
         }
-    }, [auth.isLoggedIn, auth.jwtToken, allMockOrders]); // Re-run when login status or token changes
-
-    const filteredOrders = useMemo(() => {
-        let filtered = orders.filter(order =>
-            activeTab === 'current' ? !order.isPast : order.isPast
-        );
-
-        if (filterStatus !== 'All') {
-            filtered = filtered.filter(order => order.status === filterStatus);
-        }
-        return filtered.sort((a, b) => new Date(b.date + ' ' + b.time) - new Date(a.date + ' ' + a.time)); // Sort by date descending
-    }, [orders, activeTab, filterStatus]);
-
-    const handleOrderCardClick = (order) => {
-        setSelectedOrder(order);
     };
-
-    const handleCloseModal = () => {
-        setSelectedOrder(null);
-    };
-
+ 
     return (
-        <div className="min-h-screen flex flex-col font-poppins bg-background-light">
-            <Header onSignInClick={onSignInClick} />
-
-            <main className="flex-grow py-16 px-4 container">
-                <section className="text-center mb-12">
-                    <h1 className="order-section-header">My Orders</h1>
-                    <p className="text-lg text-text-light leading-relaxed max-w-2xl mx-auto">
-                        View your past and current food orders.
-                    </p>
-                </section>
-
-                {!auth.isLoggedIn ? (
-                    <section className="empty-state">
-                        <FontAwesomeIcon icon={faSignInAlt} className="icon" />
-                        <h2 className="text-3xl font-semibold text-text-dark mb-4">Please Log In to View Your Orders</h2>
-                        <p className="text-text-light mb-6">
-                            You need to be logged in to access your order history and details.
-                        </p>
+        <div className="my-orders-page">
+            <Header /> {/* Re-using your Header component */}
+ 
+            <div className="main-content">
+                <h1 className="page-title">My Orders</h1>
+                <p className="page-description">
+                    View your past and current food orders with ease.
+                </p>
+ 
+                {/* Order Tabs and Dropdown */}
+                <div className="controls-container">
+                    <div className="order-tabs">
                         <button
-                            onClick={() => onSignInClick()} // Trigger login popup
-                            className="btn btn-secondary-solid"
+                            className={`order-tab-button ${activeTab === 'current' ? 'active' : ''}`}
+                            onClick={() => {
+                                setActiveTab('current');
+                                setFilterStatus('All');
+                            }}
                         >
-                            Sign In
+                            Current Orders
                         </button>
-                    </section>
-                ) : (
-                    <section className="max-w-4xl mx-auto w-full">
-                        <h2 className="text-3xl font-semibold text-text-dark mb-6 text-center">
-                            Welcome, {auth.userEmail || 'User'}!
-                        </h2>
-
-                        <div className="order-tabs">
-                            <button
-                                className={`order-tab-button ${activeTab === 'current' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('current')}
-                            >
-                                Current Orders
-                            </button>
-                            <button
-                                className={`order-tab-button ${activeTab === 'past' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('past')}
-                            >
-                                Past Orders
-                            </button>
+                        <button
+                            className={`order-tab-button ${activeTab === 'past' ? 'active' : ''}`}
+                            onClick={() => {
+                                setActiveTab('past');
+                                setFilterStatus('All');
+                            }}
+                        >
+                            Past Orders
+                        </button>
+                    </div>
+ 
+                    <div className="filter-dropdown-container">
+                        <select
+                            className="filter-dropdown"
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                        >
+                            <option value="All">All Statuses</option>
+                            <option value="PENDING">Pending</option>
+                            <option value="DELIVERED">Delivered</option>
+                            <option value="CANCELLED">Cancelled</option>
+                        </select>
+                        <div className="dropdown-arrow">
+                            {/* ChevronDown Icon SVG */}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="m6 9 6 6 6-6"></path>
+                            </svg>
                         </div>
-
-                        <OrderFilter onFilterChange={setFilterStatus} currentFilter={filterStatus} />
-
-                        {loading && <LoadingSkeleton />}
-
-                        {!loading && !error && filteredOrders.length === 0 && (
-                            <div className="empty-state">
-                                <FontAwesomeIcon icon={faBoxOpen} className="icon" />
-                                <h3 className="text-2xl font-semibold text-text-dark mb-4">
-                                    No {filterStatus !== 'All' ? filterStatus : ''} {activeTab === 'current' ? 'Current' : 'Past'} Orders Found
-                                </h3>
-                                <p className="text-text-light mb-6">
-                                    It looks like you haven't placed any {activeTab === 'current' ? 'active' : 'past'} orders yet, or they don't match your filter.
-                                </p>
-                                {activeTab === 'current' && (
-                                    <Link to="/" className="btn btn-secondary-solid inline-block">
-                                        Browse Restaurants
-                                    </Link>
-                                )}
-                                {activeTab === 'past' && filterStatus !== 'All' && (
-                                    <button onClick={() => setFilterStatus('All')} className="btn bg-gray-300 text-text-dark px-4 py-2 rounded-md hover:bg-gray-400">
-                                        Clear Filter
-                                    </button>
-                                )}
-                            </div>
-                        )}
-
-                        {!loading && !error && filteredOrders.length > 0 && (
-                            <div className="grid grid-cols-1 gap-6">
-                                {filteredOrders.map(order => (
-                                    <OrderCard key={order.id} order={order} onClick={handleOrderCardClick} />
-                                ))}
-                            </div>
-                        )}
-                    </section>
+                    </div>
+                </div>
+ 
+                {/* Loading and Error Messages */}
+                {loading && (
+                    <div className="loading-message">
+                        <svg className="spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
+                            <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
+                        </svg>
+                        Loading orders...
+                    </div>
                 )}
-            </main>
-
-            <Footer />
-            {selectedOrder && <OrderDetailsModal order={selectedOrder} onClose={handleCloseModal} />}
+                {error && (
+                    <div className="error-message">
+                        <div className="error-icon-text">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="m15 9-6 6"></path>
+                                <path d="m9 9 6 6"></path>
+                            </svg>
+                            <span className="error-heading">Connection Error!</span>
+                        </div>
+                        <p className="error-details">{error}</p>
+                    </div>
+                )}
+ 
+                {/* Orders Display */}
+                <div className="orders-grid">
+                    {orders.length === 0 && !loading && !error ? (
+                        <p className="no-orders-message">No orders found for the selected criteria.</p>
+                    ) : (
+                        orders.map((order) => (
+                            <div key={order.orderId} className="order-card">
+                                <div className="order-card-header">
+                                    <h3 className="order-id">Order ID: {order.orderId}</h3>
+                                    <span className={`order-status status-${order.status ? order.status.toLowerCase() : 'unknown'}`}>
+                                        {order.status}
+                                    </span>
+                                </div>
+                                <p className="order-restaurant-id">Restaurant ID: <span>{order.restaurantId}</span></p>
+                                <p className="order-total-amount">Total Amount: <span>${order.totalAmount?.toFixed(2)}</span></p>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
         </div>
     );
 };
-
+ 
 export default OrderMgmt;

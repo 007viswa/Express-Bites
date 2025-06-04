@@ -1,7 +1,7 @@
 // Components/LoginPopup.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import '../LoginPopup.css'; // Import the CSS file
-import { useAuth } from '../context/AuthContext';
+import { AuthContext, useAuth } from '../context/AuthContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheckCircle } from '@fortawesome/free-solid-svg-icons'; // Still needed for signup success message if it's kept, but not for login
 
@@ -22,7 +22,8 @@ function LoginPopup({ onClose, triggerContext, onLoginSuccess }) {
 
     const API_BASE_URL = 'http://localhost:1111'; // Your API Gateway URL
 
-    const auth = useAuth();
+    // const auth = useAuth();
+    const auth = useContext(AuthContext);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -84,9 +85,11 @@ function LoginPopup({ onClose, triggerContext, onLoginSuccess }) {
                 console.log('Login successful! Token:', token);
                 // setLoginSuccessMessage('Successfully Logged In!'); // Removed
 
+                auth.login(token); // Pass the raw token to AuthContext
+                onLoginSuccess(); // Trigger the success callback in Home.jsx
+                
                 setTimeout(() => {
-                    auth.login(token); // Pass the raw token to AuthContext
-                    onLoginSuccess(); // Trigger the success callback in Home.jsx
+                   
                     handleClose(); // Close the popup
                 }, 1000); // Small delay before closing, allowing Home.jsx notification to appear
             } else {

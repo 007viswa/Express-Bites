@@ -82,7 +82,7 @@ function Header({ onSignInClick }) {
                                                 {/* Conditional links based on roles */}
                                                 {auth.userRole && auth.userRole.includes('User') && (
                                                     <>
-                                                        <li><Link to="/my-orders">My Orders</Link></li>
+                                                        <li><Link to="/order">My Orders</Link></li>
                                                         <li><Link to="/favourites">Favourite </Link></li>
                                                     </>
                                                 )}

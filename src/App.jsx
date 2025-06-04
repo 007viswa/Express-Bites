@@ -50,7 +50,7 @@ function App() {
                     <Route path="/about-us" element={<AboutUs onSignInClick={handleSignInClick} />} />
                     <Route path="/partner-with-us" element={<PartnerWithUs onSignInClick={handleSignInClick} />} />
                     <Route path="/how-it-works" element={<HowItWorks onSignInClick={handleSignInClick} />} />
-                    <Route path="/my-orders" element={<OrderMgmt onSignInClick={handleSignInClick} />} />
+                    <Route path="/order" element={<OrderMgmt onSignInClick={handleSignInClick} />} />
                     <Route path="*" element={<NotFound />} />
                 </Routes>
             )}
