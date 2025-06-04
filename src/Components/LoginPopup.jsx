@@ -277,9 +277,6 @@ function LoginPopup({ onClose, triggerContext, onLoginSuccess }) {
                                     />
                                     <label htmlFor="signupPassword">Password</label>
                                 </div>
-                                <p className="referral-code-link">
-                                    <a href="#">Have a referral code?</a>
-                                </p>
                                 <button type="submit" className="popup-button">
                                     CONTINUE
                                 </button>

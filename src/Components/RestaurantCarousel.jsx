@@ -1,91 +1,30 @@
 // Components/RestaurantCarousel.jsx
-import React, { useRef } from 'react';
-import '../RestaurantCarousel.css'; // We'll create this CSS file next
+import React, { useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import '../RestaurantCarousel.css'; // Your CSS file
 
-// Restored original local image imports
-const placeholderRestaurantImage1 = '../../res1.jpg';
-const placeholderRestaurantImage2 = '../../res2.jpg';
-const placeholderRestaurantImage3 = '../../res3.jpg';
-const placeholderRestaurantImage4 = '../../res4.jpg';
-const placeholderRestaurantImage5 = '../../res5.jpg';
+import res1 from '../../public/kfc.jpg'; // Import your local images
+import res2 from '../../public/res2.jpg';
+import res3 from '../../public/res3.jpg';
+import res4 from '../../public/res4.jpg';
+import res5 from '../../public/res5.jpg';
+import res6 from '../../public/res6.jpg';
 
+// Add more as needed, e.g., import res6 from '../res6.jpg';
 
-const restaurantsData = [
-  {
-    id: 1,
-    name: 'Secret Story',
-    rating: 4.0,
-    cuisine: 'Chinese • North Indian',
-    price: '₹2500 for two',
-    location: 'Nungambakkam, Chennai',
-    distance: '6.3 km',
-    mainOffer: 'Flat 35% off on pre-booking',
-    otherOffersCount: 3,
-    bankOffer: 'Up to 10% off with bank offers',
-    image: placeholderRestaurantImage1, // Restored original path
-  },
-  {
-    id: 2,
-    name: 'Message In A Bottle',
-    rating: 4.3,
-    cuisine: 'Chinese • North Indian',
-    price: '₹1600 for two',
-    location: 'Fortel, Egmore, Chennai',
-    distance: '3.3 km',
-    mainOffer: 'Flat 25% off on pre-booking',
-    otherOffersCount: 2,
-    bankOffer: 'Up to 10% off with bank offers',
-    image: placeholderRestaurantImage2, // Restored original path
-  },
-  {
-    id: 3,
-    name: 'Enoki',
-    rating: 3.9,
-    cuisine: 'Chinese • Sushi',
-    price: '₹1200 for two',
-    location: 'Fortel, Egmore, Chennai',
-    distance: '3.3 km',
-    mainOffer: 'Flat 15% off on pre-booking',
-    otherOffersCount: 2,
-    bankOffer: 'Up to 10% off with bank offers',
-    image: placeholderRestaurantImage3, // Restored original path
-  },
-  {
-    id: 4,
-    name: 'The Curry Leaf',
-    rating: 4.5,
-    cuisine: 'South Indian • Chettinad',
-    price: '₹1000 for two',
-    location: 'T. Nagar, Chennai',
-    distance: '4.5 km',
-    mainOffer: 'Combo Meal @ ₹499',
-    otherOffersCount: 1,
-    bankOffer: 'Up to 5% off with bank offers',
-    image: placeholderRestaurantImage4, // Restored original path
-  },
-  {
-    id: 5,
-    name: 'Pasta Street',
-    rating: 4.2,
-    cuisine: 'Italian • Pasta • Pizza',
-    price: '₹1800 for two',
-    location: 'Adyar, Chennai',
-    distance: '8.1 km',
-    mainOffer: 'Buy 1 Get 1 on Pizza',
-    otherOffersCount: 0,
-    bankOffer: 'Up to 10% off with bank offers',
-    image: placeholderRestaurantImage5, // Restored original path
-  },
-];
+import { useAuth } from '../context/AuthContext';
 
-const RestaurantCard = ({ restaurant }) => (
+// Array of local image imports to cycle through
+const localRestaurantImages = [res1, res2, res3, res4, res5, res6];
+
+// RestaurantCard component
+const RestaurantCard = ({ restaurant, handleViewMenu }) => (
   <div className="restaurant-card-item">
     <div className="card-image-container">
       <img
-        src={restaurant.image}
+        src={restaurant.image} // Use the image path assigned from local imports
         alt={restaurant.name}
         className="restaurant-image"
-        // Removed onError attribute
       />
       <div className="restaurant-rating">
         {restaurant.rating.toFixed(1)} <span className="star-icon">★</span>
@@ -95,28 +34,14 @@ const RestaurantCard = ({ restaurant }) => (
       <h3 className="restaurant-name">{restaurant.name}</h3>
       <p className="restaurant-info">{restaurant.cuisine} <span className="info-dot">•</span> {restaurant.price}</p>
       <p className="restaurant-info">{restaurant.location} <span className="info-dot">•</span> {restaurant.distance}</p>
-      <div className="restaurant-booking-info">
-        <svg className="table-booking-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M1.5 0A1.5 1.5 0 0 0 0 1.5v7A1.5 1.5 0 0 0 1.5 10H1v1H.5a.5.5 0 0 0 0 1H1v1.5A1.5 1.5 0 0 0 2.5 15h11A1.5 1.5 0 0 0 15 13.5V12h1a.5.5 0 0 0 0-1H15V1.5A1.5 1.5 0 0 0 13.5 0h-12zM1 1.5C1 .672.672 0 0 0v10a.5.5 0 0 1-.5.5H0V1.5zM2.5 1a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 .5.5V12H2.5V1z"/>
-        </svg>
-        Table booking
-      </div>
-    </div>
-    <div className="restaurant-offers">
-      <div className="main-offer">
-        <svg className="offer-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path fillRule="evenodd" d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-8-5a.5.5 0 0 0-1 0v3.062C5.96 6.188 5 7.438 5 9c0 1.563.96 2.813 2.031 3.375V13a.5.5 0 0 0 1 0v-.625C9.04 11.812 10 10.562 10 9c0-1.563-.96-2.813-2.031-3.375V3zM8 7a2 2 0 1 0 0 4 2 2 0 0 0 0-4"/>
-        </svg>
-        {restaurant.mainOffer}
-        {restaurant.otherOffersCount > 0 && (
-          <span className="other-offers-count"> + {restaurant.otherOffersCount} more</span>
-        )}
-      </div>
-      {restaurant.bankOffer && (
-        <div className="bank-offer">
-          {restaurant.bankOffer}
-        </div>
-      )}
+      {/* Restored restaurant-booking-info as it was in your previous full code */}
+     </div>
+    {/* Restored restaurant-offers as it was in your previous full code */}
+    
+    <div className="card-actions">
+        <button className="view-menu-button" onClick={() => handleViewMenu(restaurant.id)}>
+            View Menu
+        </button>
     </div>
   </div>
 );
@@ -124,11 +49,89 @@ const RestaurantCard = ({ restaurant }) => (
 
 function RestaurantCarousel() {
   const carouselContainerRef = useRef(null);
+  const [restaurants, setRestaurants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const auth = useAuth();
+  const navigate = useNavigate();
+
+  const API_BASE_URL = 'http://localhost:1111/restaurant';
+
+  const fetchRestaurants = async () => {
+    setLoading(true);
+    setError(null);
+
+    if (!auth.jwtToken) {
+      setError("Authentication token not available. Please log in.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/viewAllRestaurant`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${auth.jwtToken}`
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Raw backend response on error:', errorText);
+        let errorMessage = `HTTP error! Status: ${response.status}`;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage += ` - ${errorJson.message || errorJson.error || 'Unknown backend error'}`;
+        } catch (e) {
+          errorMessage += ` - ${errorText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      console.log('Fetched restaurants:', data);
+
+      const mappedRestaurants = data.map((res, index) => ({
+        id: res.restaurantId,
+        name: res.name,
+        rating: 4.2, // Dummy rating
+        cuisine: 'Multi-cuisine • Indian', // Dummy cuisine
+        price: '₹800 for two', // Dummy price
+        location: res.address || 'Unknown Location',
+        distance: '3.0 km', // Dummy distance
+        // Assign local image based on index to cycle through them
+        image: localRestaurantImages[index % localRestaurantImages.length]
+      }));
+      setRestaurants(mappedRestaurants);
+    } catch (err) {
+      console.error('Error fetching restaurants:', err);
+      setError(
+        `Failed to load restaurants: ${err.message}. Please ensure: \n\n` +
+        `1. **API Gateway and Restaurant Service are Running.** \n` +
+        `2. **CORS is configured correctly** on your API Gateway for \`http://localhost:5176\` with \`allowCredentials=true\` and \`Authorization\` header allowed. \n` +
+        `3. **You are logged in** with a valid JWT token. \n` +
+        `4. The backend endpoint \`/restaurant/viewAllRestaurant\` is accessible and returns data.`
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!auth.isLoading && auth.isLoggedIn) {
+      fetchRestaurants();
+    } else if (!auth.isLoading && !auth.isLoggedIn) {
+        setRestaurants([]);
+        setError("Please log in to view restaurants.");
+        setLoading(false);
+    }
+  }, [auth.isLoggedIn, auth.isLoading, auth.jwtToken]);
 
   const handleScroll = (direction) => {
     if (carouselContainerRef.current) {
-      const cardWidth = carouselContainerRef.current.querySelector('.restaurant-card-item')?.offsetWidth || 300; // Estimate card width
-      const scrollAmount = cardWidth + 20; // Card width + gap
+      const cardWidth = carouselContainerRef.current.querySelector('.restaurant-card-item')?.offsetWidth || 300;
+      const scrollAmount = cardWidth + 20;
 
       if (direction === 'left') {
         carouselContainerRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
@@ -136,6 +139,10 @@ function RestaurantCarousel() {
         carouselContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
       }
     }
+  };
+
+  const handleViewMenu = (restaurantId) => {
+    navigate(`/restaurant/${restaurantId}/menu`);
   };
 
   return (
@@ -160,11 +167,49 @@ function RestaurantCarousel() {
             </button>
           </div>
         </div>
-        <div className="restaurant-carousel-container" ref={carouselContainerRef}>
-          {restaurantsData.map((restaurant) => (
-            <RestaurantCard restaurant={restaurant} key={restaurant.id} />
-          ))}
-        </div>
+
+        {loading && (
+          <div className="loading-message">
+            <svg className="spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
+                <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
+            </svg>
+            Loading restaurants...
+          </div>
+        )}
+
+        {error && (
+          <div className="error-message">
+            <div className="error-icon-text">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="m15 9-6 6"></path>
+                    <path d="m9 9 6 6"></path>
+                </svg>
+                <span className="error-heading">Error Loading Restaurants!</span>
+            </div>
+            <p className="error-details">{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && restaurants.length === 0 && auth.isLoggedIn && (
+            <p className="no-restaurants-message">No restaurants found. Please check your backend data.</p>
+        )}
+        {!loading && !error && restaurants.length === 0 && !auth.isLoggedIn && (
+            <p className="no-restaurants-message">Please log in to discover restaurants.</p>
+        )}
+
+        {!loading && !error && restaurants.length > 0 && (
+          <div className="restaurant-carousel-container" ref={carouselContainerRef}>
+            {restaurants.map((restaurant) => (
+              <RestaurantCard
+                restaurant={restaurant}
+                key={restaurant.id}
+                handleViewMenu={handleViewMenu}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

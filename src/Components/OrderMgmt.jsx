@@ -1,39 +1,58 @@
 import React, { useState, useEffect } from 'react';
-import '../OrderMgmt.css'; // This is where our new CSS lives!
-import Header from './Header';
- 
+import '../OrderMgmt.css';
+// import Header from './Header'; // REMOVED: Header is now in App.jsx
+import { useAuth } from '../context/AuthContext';
+
 const OrderMgmt = () => {
-    const API_BASE_URL = 'http://localhost:1111/order'; // Your Spring Boot backend URL
- 
+    const API_BASE_URL = 'http://localhost:1111/order';
+
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState('current'); // 'current' or 'past'
-    const [filterStatus, setFilterStatus] = useState('All'); // 'All', 'PENDING', 'DELIVERED', etc.
- 
+    const [activeTab, setActiveTab] = useState('current');
+    const [filterStatus, setFilterStatus] = useState('All');
+
+    const auth = useAuth();
+
     useEffect(() => {
         console.log(`Frontend connecting to backend at: ${API_BASE_URL}`);
     }, []);
- 
+
     useEffect(() => {
-        let statusToFilter = filterStatus;
-        if (activeTab === 'current' && filterStatus === 'All') {
-            statusToFilter = 'PENDING';
-        } else if (activeTab === 'past' && filterStatus === 'All') {
-            statusToFilter = 'DELIVERED';
+        if (!auth.isLoading) {
+            if (auth.isLoggedIn) {
+                let statusToFilter = filterStatus;
+                if (activeTab === 'current' && filterStatus === 'All') {
+                    statusToFilter = 'PENDING';
+                } else if (activeTab === 'past' && filterStatus === 'All') {
+                    statusToFilter = 'DELIVERED';
+                }
+                fetchAllOrders(statusToFilter);
+            } else {
+                setOrders([]);
+                setError("You must be logged in to view your orders.");
+                setLoading(false);
+            }
         }
-        fetchAllOrders(statusToFilter);
-    }, [activeTab, filterStatus]);
- 
+    }, [activeTab, filterStatus, auth.isLoggedIn, auth.isLoading, auth.jwtToken]);
+
     const fetchAllOrders = async (status) => {
         setLoading(true);
         setError(null);
- 
+
         const url = status && status !== 'All' ? `${API_BASE_URL}/list?status=${status}` : `${API_BASE_URL}/list`;
         console.log(`Fetching orders from: ${url}`);
- 
+        console.log(`Using JWT Token: ${auth.jwtToken ? auth.jwtToken.substring(0, 30) + '...' : 'No Token'}`);
+
         try {
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${auth.jwtToken}`
+                },
+            });
+
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('Raw backend response on error:', errorText);
@@ -52,30 +71,29 @@ const OrderMgmt = () => {
         } catch (err) {
             console.error('Error fetching orders:', err);
             setError(
-                `Failed to connect to the backend: ${err.message}. Please check the following: \n\n` +
-                `1. **Backend Running?**: Ensure your Spring Boot application is running on \`http://localhost:1111\`. \n` +
-                `2. **CORS Configuration**: Verify your backend's \`@CrossOrigin\` annotation in \`OrderController\` is \`@CrossOrigin("http://localhost:5176")\`. \n` +
-                `3. **Backend Restart**: Remember to restart your Spring Boot backend after *any* code changes (especially CORS). \n` +
-                `4. **Network/Firewall**: Temporarily disable any local firewalls or antivirus that might block ports. \n` +
-                `5. **Port Availability**: Confirm port 8083 is not in use by another application. \n` +
+                `Failed to fetch orders: ${err.message}. Please check the following: \n\n` +
+                `1. **Backend Running?**: Ensure your API Gateway (port 1111) and Order Service are running. \n` +
+                `2. **CORS Configuration**: Verify your API Gateway and Order Service have correct \`@CrossOrigin\` annotations for \`http://localhost:5176\`. \n` +
+                `3. **Backend Restart**: Remember to restart your backend services after *any* code changes. \n` +
+                `4. **Authentication**: Ensure you are logged in. (Error: ${err.message}) \n` +
+                `5. **Network/Firewall**: Temporarily disable any local firewalls or antivirus that might block ports. \n` +
                 `6. **Database Data**: Ensure your backend database contains order data.`
             );
         } finally {
             setLoading(false);
         }
     };
- 
+
     return (
         <div className="my-orders-page">
-            <Header /> {/* Re-using your Header component */}
- 
+            {/* <Header /> Removed Header */}
+
             <div className="main-content">
                 <h1 className="page-title">My Orders</h1>
                 <p className="page-description">
                     View your past and current food orders with ease.
                 </p>
- 
-                {/* Order Tabs and Dropdown */}
+
                 <div className="controls-container">
                     <div className="order-tabs">
                         <button
@@ -97,7 +115,7 @@ const OrderMgmt = () => {
                             Past Orders
                         </button>
                     </div>
- 
+
                     <div className="filter-dropdown-container">
                         <select
                             className="filter-dropdown"
@@ -110,15 +128,13 @@ const OrderMgmt = () => {
                             <option value="CANCELLED">Cancelled</option>
                         </select>
                         <div className="dropdown-arrow">
-                            {/* ChevronDown Icon SVG */}
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="m6 9 6 6 6-6"></path>
                             </svg>
                         </div>
                     </div>
                 </div>
- 
-                {/* Loading and Error Messages */}
+
                 {loading && (
                     <div className="loading-message">
                         <svg className="spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -141,8 +157,7 @@ const OrderMgmt = () => {
                         <p className="error-details">{error}</p>
                     </div>
                 )}
- 
-                {/* Orders Display */}
+
                 <div className="orders-grid">
                     {orders.length === 0 && !loading && !error ? (
                         <p className="no-orders-message">No orders found for the selected criteria.</p>
@@ -165,5 +180,5 @@ const OrderMgmt = () => {
         </div>
     );
 };
- 
+
 export default OrderMgmt;

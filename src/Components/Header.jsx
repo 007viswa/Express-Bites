@@ -80,7 +80,7 @@ function Header({ onSignInClick }) {
                                             <ul className="profile-menu-links">
                                                 <li><Link to="/profile-settings">Profile</Link></li>
                                                 {/* Conditional links based on roles */}
-                                                {auth.userRole && auth.userRole.includes('User') && (
+                                                {auth.userRole && auth.userRole.includes('ROLE_USER') && (
                                                     <>
                                                         <li><Link to="/order">My Orders</Link></li>
                                                         <li><Link to="/favourites">Favourite </Link></li>
