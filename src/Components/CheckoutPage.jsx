@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Header from './Header';
-import Footer from './Footer'; // Corrected import path for Footer
+import Footer from './Footer';
 import '../CheckoutPage.css'; // The CSS file for this component
 
 const CheckoutPage = () => {
@@ -179,10 +179,6 @@ const CheckoutPage = () => {
         try {
             // --- Backend Payload (Simplified to match current Orders.java) ---
             const orderPayloadForBackend = {
-                // FIXED: Sending a dummy Long (1L) for userId as backend expects Long, but auth.userEmail is a string.
-                // IMPORTANT: This is a temporary workaround. For a robust solution,
-                // either change userId in Orders.java to String, or ensure your AuthContext
-                // provides a numeric userId that maps to a user ID in your backend.
                 userId: 1, // Using a dummy Long value to satisfy backend's Long type
                 restaurantID: cartItems[0]?.restaurantID, // Assuming all items from same restaurant
                 totalAmount: cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
@@ -215,9 +211,30 @@ const CheckoutPage = () => {
                 throw new Error(errorMessage);
             }
 
-            // Order placed successfully!
-            const responseOrder = await response.json(); // Get the order ID from the response if available
-            console.log("Order placed successfully with ID:", responseOrder?.orderId);
+            const responseOrder = await response.json();
+            const orderId = responseOrder?.orderId;
+
+            // --- Store full order details in localStorage for OrderMgmt to access ---
+            const storedOrders = JSON.parse(localStorage.getItem('expressbite_orders_cache') || '[]');
+            
+            const detailedOrderForStorage = {
+                orderId: orderId, // Use the ID from the backend
+                userId: auth.userEmail, // Store user's email for identification
+                restaurantID: cartItems[0]?.restaurantID,
+                restaurantName: null, // Will fetch this in OrderMgmt
+                totalAmount: totalOrderValue,
+                status: "PENDING",
+                deliveryDetails: deliveryInfo,
+                paymentMethod: selectedPaymentMethod,
+                orderItems: cartItems, // Store the actual cart items
+                orderTime: new Date().toISOString()
+            };
+            storedOrders.push(detailedOrderForStorage);
+            localStorage.setItem('expressbite_orders_cache', JSON.stringify(storedOrders));
+            console.log("Full order details stored in localStorage:", detailedOrderForStorage);
+
+
+            console.log("Order placed successfully with ID:", orderId);
             setSuccessMessage("Order Placed Successfully!");
             setCartItems([]); // Clear cart after successful order
 
@@ -227,9 +244,13 @@ const CheckoutPage = () => {
             // const deliveryTimeMs = 5000; // For testing (5 seconds)
 
             setTimeout(() => {
-                console.log(`--- SIMULATION: Order ID ${responseOrder?.orderId || 'Unknown'} would now be DELIVERED ---`);
-                // In a real app, you would dispatch an action or update state to reflect this if your UI polls for status
-                // For now, it's just a console log.
+                // Update the status of the order in localStorage to DELIVERED
+                const currentStoredOrders = JSON.parse(localStorage.getItem('expressbite_orders_cache') || '[]');
+                const updatedStoredOrders = currentStoredOrders.map(order => 
+                    order.orderId === orderId ? { ...order, status: "DELIVERED" } : order
+                );
+                localStorage.setItem('expressbite_orders_cache', JSON.stringify(updatedStoredOrders));
+                console.log(`--- SIMULATION: Order ID ${orderId || 'Unknown'} status updated to DELIVERED in localStorage ---`);
             }, deliveryTimeMs);
 
             setTimeout(() => {

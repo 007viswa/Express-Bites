@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import '../OrderMgmt.css';
 import { useAuth } from '../context/AuthContext';
-import Footer from './Footer'; // Assuming Footer exists and needs to be rendered
+import Footer from './Footer';
+import OrderDetailModal from './OrderDetailModal'; // New component for detailed view
 
 const OrderMgmt = () => {
     const ORDER_API_BASE_URL = 'http://localhost:1111/order';
-    const RESTAURANT_API_BASE_URL = 'http://localhost:1111/restaurant'; // Assuming this is your Restaurant Service base URL
+    const RESTAURANT_API_BASE_URL = 'http://localhost:1111/restaurant';
 
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('current');
     const [filterStatus, setFilterStatus] = useState('All');
+
+    const [selectedOrderDetails, setSelectedOrderDetails] = useState(null); // State to hold details for the modal
+    const [isModalOpen, setIsModalOpen] = useState(false); // State to control modal visibility
 
     const auth = useAuth();
 
@@ -21,7 +25,7 @@ const OrderMgmt = () => {
 
     useEffect(() => {
         if (!auth.isLoading) {
-            if (auth.isLoggedIn && auth.jwtToken) { // Ensure token is available
+            if (auth.isLoggedIn && auth.jwtToken) {
                 let statusToFilter = filterStatus;
                 if (activeTab === 'current' && filterStatus === 'All') {
                     statusToFilter = 'PENDING';
@@ -66,36 +70,65 @@ const OrderMgmt = () => {
                 }
                 throw new Error(errorMessage);
             }
-            let ordersData = await response.json();
-            console.log('Successfully fetched raw orders:', ordersData);
+            let backendOrders = await response.json();
+            console.log('Successfully fetched raw backend orders:', backendOrders);
 
-            // Fetch restaurant names for each order
-            const ordersWithRestaurantNames = await Promise.all(ordersData.map(async (order) => {
-                if (order.restaurantID) {
+            // Load detailed orders from localStorage
+            const cachedOrdersJson = localStorage.getItem('expressbite_orders_cache');
+            let cachedOrders = [];
+            if (cachedOrdersJson) {
+                try {
+                    cachedOrders = JSON.parse(cachedOrdersJson);
+                    console.log('Successfully loaded cached orders from localStorage:', cachedOrders);
+                } catch (e) {
+                    console.error('Error parsing cached orders from localStorage:', e);
+                    cachedOrders = [];
+                }
+            }
+
+            // Merge backend orders with cached details and fetch restaurant names
+            const ordersToDisplay = await Promise.all(backendOrders.map(async (backendOrder) => {
+                const cachedDetail = cachedOrders.find(co => co.orderId === backendOrder.orderId);
+                let orderDisplay = { ...backendOrder };
+
+                if (cachedDetail) {
+                    // Overwrite/add detailed fields from cache
+                    orderDisplay = {
+                        ...orderDisplay,
+                        ...cachedDetail, // This merges deliveryDetails, orderItems, paymentMethod
+                        status: backendOrder.status // Ensure backend's current status is prioritized
+                    };
+                }
+
+                // Fetch restaurant name
+                if (orderDisplay.restaurantID && !orderDisplay.restaurantName) { // Only fetch if ID exists and name isn't already in cache
                     try {
-                        const restaurantResponse = await fetch(`${RESTAURANT_API_BASE_URL}/viewRestaurantById/${order.restaurantID}`, {
+                        const restaurantResponse = await fetch(`${RESTAURANT_API_BASE_URL}/viewRestaurantById/${orderDisplay.restaurantID}`, {
                             method: 'GET',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${auth.jwtToken}` // Assuming restaurant service also needs auth
+                                'Authorization': `Bearer ${auth.jwtToken}`
                             }
                         });
                         if (restaurantResponse.ok) {
                             const restaurantData = await restaurantResponse.json();
-                            return { ...order, restaurantName: restaurantData.name || `ID: ${order.restaurantID}` };
+                            orderDisplay.restaurantName = restaurantData.name || `ID: ${orderDisplay.restaurantID}`;
                         } else {
-                            console.warn(`Could not fetch restaurant name for ID: ${order.restaurantID}. Status: ${restaurantResponse.status}`);
-                            return { ...order, restaurantName: `ID: ${order.restaurantID}` };
+                            console.warn(`Could not fetch restaurant name for ID: ${orderDisplay.restaurantID}. Status: ${restaurantResponse.status}`);
+                            orderDisplay.restaurantName = `ID: ${orderDisplay.restaurantID}`;
                         }
                     } catch (restErr) {
-                        console.error(`Error fetching restaurant name for ID ${order.restaurantID}:`, restErr);
-                        return { ...order, restaurantName: `ID: ${order.restaurantID}` };
+                        console.error(`Error fetching restaurant name for ID ${orderDisplay.restaurantID}:`, restErr);
+                        orderDisplay.restaurantName = `ID: ${orderDisplay.restaurantID}`;
                     }
+                } else if (!orderDisplay.restaurantID) {
+                    orderDisplay.restaurantName = 'N/A';
                 }
-                return { ...order, restaurantName: 'N/A' }; // No restaurant ID
+
+                return orderDisplay;
             }));
 
-            setOrders(ordersWithRestaurantNames);
+            setOrders(ordersToDisplay);
         } catch (err) {
             console.error('Error fetching orders or restaurant names:', err);
             setError(
@@ -112,10 +145,18 @@ const OrderMgmt = () => {
         }
     };
 
+    const handleOrderCardClick = (order) => {
+        setSelectedOrderDetails(order);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedOrderDetails(null);
+    };
+
     return (
         <div className="my-orders-page">
-            {/* Header is managed by App.jsx now */}
-
             <div className="main-content">
                 <h1 className="page-title">My Orders</h1>
                 <p className="page-description">
@@ -191,14 +232,13 @@ const OrderMgmt = () => {
                         <p className="no-orders-message">No orders found for the selected criteria.</p>
                     ) : (
                         orders.map((order) => (
-                            <div key={order.orderId} className="order-card">
+                            <div key={order.orderId} className="order-card" onClick={() => handleOrderCardClick(order)}>
                                 <div className="order-card-header">
                                     <h3 className="order-id">Order ID: {order.orderId}</h3>
                                     <span className={`order-status status-${order.status ? order.status.toLowerCase() : 'unknown'}`}>
                                         {order.status}
                                     </span>
                                 </div>
-                                {/* Display Restaurant Name */}
                                 <p className="order-restaurant-name">Restaurant: <span>{order.restaurantName || 'Loading...'}</span></p>
                                 <p className="order-total-amount">Total Amount: <span>₹{order.totalAmount?.toFixed(2)}</span></p>
                             </div>
@@ -206,6 +246,12 @@ const OrderMgmt = () => {
                     )}
                 </div>
             </div>
+
+            {/* Order Detail Modal */}
+            {isModalOpen && selectedOrderDetails && (
+                <OrderDetailModal order={selectedOrderDetails} onClose={handleCloseModal} />
+            )}
+
             <Footer />
         </div>
     );

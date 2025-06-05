@@ -14,6 +14,7 @@ import Header from './Components/Header';
 import Unauthorized from './Components/Unauthorized';
 import ProtectedRoute from './Components/ProtectedRoute';
 import CheckoutPage from './Components/CheckoutPage';
+import Profile from './Components/Profile';
 
 const NotFound = () => (
     <div style={{ padding: '80px 20px', textAlign: 'center', minHeight: 'calc(100vh - 140px)' }}>
@@ -61,6 +62,7 @@ function App() {
                         path="/restaurant/:restaurantId/menu"
                         element={<MenuPage />}
                     />
+                    <Route path='/profile-settings' element={<Profile />} />
                     <Route
                         path="/admin-dashboard"
                         element={

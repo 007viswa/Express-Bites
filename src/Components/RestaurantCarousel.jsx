@@ -3,6 +3,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../RestaurantCarousel.css'; // Your CSS file
 
+// IMPORTANT: Ensure these paths are correct relative to THIS RestaurantCarousel.jsx file
+// For example, if RestaurantCarousel.jsx is in src/Components, then ../../public goes to src/public
 import res1 from '../../public/kfc.jpg'; // Import your local images
 import res2 from '../../public/res2.jpg';
 import res3 from '../../public/res3.jpg';
@@ -10,14 +12,12 @@ import res4 from '../../public/res4.jpg';
 import res5 from '../../public/res5.jpg';
 import res6 from '../../public/res6.jpg';
 
-// Add more as needed, e.g., import res6 from '../res6.jpg';
-
 import { useAuth } from '../context/AuthContext';
 
 // Array of local image imports to cycle through
 const localRestaurantImages = [res1, res2, res3, res4, res5, res6];
 
-// RestaurantCard component
+// RestaurantCard component - kept internal to RestaurantCarousel for simplicity
 const RestaurantCard = ({ restaurant, handleViewMenu }) => (
   <div className="restaurant-card-item">
     <div className="card-image-container">
@@ -25,6 +25,10 @@ const RestaurantCard = ({ restaurant, handleViewMenu }) => (
         src={restaurant.image} // Use the image path assigned from local imports
         alt={restaurant.name}
         className="restaurant-image"
+        onError={(e) => { // Fallback for broken images
+          e.target.onerror = null; 
+          e.target.src = 'https://placehold.co/300x200/cccccc/000000?text=No+Image';
+        }}
       />
       <div className="restaurant-rating">
         {restaurant.rating.toFixed(1)} <span className="star-icon">★</span>
@@ -34,14 +38,16 @@ const RestaurantCard = ({ restaurant, handleViewMenu }) => (
       <h3 className="restaurant-name">{restaurant.name}</h3>
       <p className="restaurant-info">{restaurant.cuisine} <span className="info-dot">•</span> {restaurant.price}</p>
       <p className="restaurant-info">{restaurant.location} <span className="info-dot">•</span> {restaurant.distance}</p>
-      {/* Restored restaurant-booking-info as it was in your previous full code */}
-     </div>
-    {/* Restored restaurant-offers as it was in your previous full code */}
-    
+      {/* Add restaurant-booking-info and restaurant-offers here if they were previously defined */}
+      {/* Example:
+      <div className="restaurant-booking-info">Some booking info</div>
+      <div className="restaurant-offers">Special offers</div>
+      */}
+    </div>
     <div className="card-actions">
-        <button className="view-menu-button" onClick={() => handleViewMenu(restaurant.id)}>
-            View Menu
-        </button>
+      <button className="view-menu-button" onClick={() => handleViewMenu(restaurant.id)}>
+        View Menu
+      </button>
     </div>
   </div>
 );
@@ -130,14 +136,19 @@ function RestaurantCarousel() {
 
   const handleScroll = (direction) => {
     if (carouselContainerRef.current) {
-      const cardWidth = carouselContainerRef.current.querySelector('.restaurant-card-item')?.offsetWidth || 300;
-      const scrollAmount = cardWidth + 20;
+      // Adjusted scroll amount for better UX
+      const scrollWidth = carouselContainerRef.current.scrollWidth;
+      const clientWidth = carouselContainerRef.current.clientWidth;
+      const currentScrollLeft = carouselContainerRef.current.scrollLeft;
 
+      let newScrollLeft;
       if (direction === 'left') {
-        carouselContainerRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        newScrollLeft = currentScrollLeft - clientWidth / 1.5; // Scroll by about 2/3 of visible width
       } else {
-        carouselContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        newScrollLeft = currentScrollLeft + clientWidth / 1.5;
       }
+
+      carouselContainerRef.current.scrollTo({ left: newScrollLeft, behavior: 'smooth' });
     }
   };
 

@@ -1,16 +1,13 @@
 // Components/Home.jsx
-import React, { useState, useEffect, useRef } from 'react'; // Import useRef
+import React, { useState, useEffect, useRef } from 'react';
 import Header from './Header';
-// Restored original local image imports
-import pacmanWhiteLogo from '../logos/pacman-white.png';
-import appStoreBadge from '../logos/app-store-badge.svg';
-import googlePlayBadge from '../logos/google-play-badge.svg';
+// Restored original local image imports directly in Home for HeroSection
 import Biriyani from '../Food items/Biriyani.avif';
 import food2 from '../Food items/2.png';
 import food1 from '../Food items/food1.png';
 import dosa1 from '../Food items/dosa1.png';
 
-import RestaurantCarousel from './RestaurantCarousel';
+import RestaurantCarousel from './RestaurantCarousel'; // Ensure this import is correct
 import Footer from './Footer';
 import { useAuth } from '../context/AuthContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -20,13 +17,13 @@ import { faCheckCircle, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
 function Home({ onSignInClick, onLoginSuccess }) {
     const [showLoginSuccessNotification, setShowLoginSuccessNotification] = useState(false);
     const [showLogoutSuccessNotification, setShowLogoutSuccessNotification] = useState(false);
-    const [showRestaurants, setShowRestaurants] = useState(false);
+    const [showRestaurants, setShowRestaurants] = useState(false); // State to control restaurant visibility
     const auth = useAuth();
 
     // Ref to store the previous login state
     const prevIsLoggedInRef = useRef(auth.isLoggedIn);
     // Ref for the restaurant carousel section
-    const restaurantCarouselRef = useRef(null); // New ref for scrolling
+    const restaurantCarouselRef = useRef(null);
 
     // Effect to handle login/logout state changes and update UI accordingly
     useEffect(() => {
@@ -38,15 +35,15 @@ function Home({ onSignInClick, onLoginSuccess }) {
                 // User just logged in
                 setShowLoginSuccessNotification(true);
                 setShowLogoutSuccessNotification(false); // Hide logout notification if logging in
-                setShowRestaurants(true);
+                setShowRestaurants(true); // Show restaurants automatically on login
             } else {
                 // User just logged out
                 setShowLoginSuccessNotification(false); // Hide login notification
                 setShowLogoutSuccessNotification(true); // Show logout notification
-                setShowRestaurants(false); // Hide restaurants
+                setShowRestaurants(false); // Hide restaurants on logout
             }
         } else if (auth.isLoggedIn && !showRestaurants) {
-            // If already logged in on initial load, ensure restaurants are shown
+            // If already logged in on initial load (or refresh), ensure restaurants are shown
             setShowRestaurants(true);
             setShowLogoutSuccessNotification(false); // Hide any lingering logout notification
         } else if (!auth.isLoggedIn && showRestaurants) {
@@ -57,7 +54,7 @@ function Home({ onSignInClick, onLoginSuccess }) {
         // Update the ref to the current login state for the next render
         prevIsLoggedInRef.current = auth.isLoggedIn;
 
-    }, [auth.isLoggedIn, showRestaurants]); // Dependencies: react to login state and carousel visibility
+    }, [auth.isLoggedIn]); // Dependencies: react to login state and carousel visibility
 
     // Effect to hide the success notifications after a few seconds
     useEffect(() => {
@@ -72,16 +69,16 @@ function Home({ onSignInClick, onLoginSuccess }) {
     }, [showLoginSuccessNotification, showLogoutSuccessNotification]);
 
 
+    // Handler for the "Order Now" button click (defined in Home, called from HeroSection)
     const handleOrderNowClick = () => {
         if (auth.isLoggedIn) {
-            setShowRestaurants(true); // Show restaurants if logged in
-            // The useEffect above will handle the scrolling
+            <RestaurantCarousel />
         } else {
             onSignInClick(); // Pop up login if not logged in
         }
     };
 
-    // HeroSection Component
+    // HeroSection Component - now defined directly within Home.jsx
     function HeroSection() {
         const images = [
             Biriyani,
@@ -106,14 +103,23 @@ function Home({ onSignInClick, onLoginSuccess }) {
             return () => clearInterval(intervalId);
         }, [images.length]);
 
+        // Derive user display name from email directly within HeroSection
+        const userDisplayName = auth.userEmail ? auth.userEmail.split('@')[0] : '';
+        const capitalizedDisplayName = userDisplayName ? userDisplayName.charAt(0).toUpperCase() + userDisplayName.slice(1) : '';
+
         return (
             <section className="hero-section">
+                <div className="hero-img-overlay"></div> {/* Added overlay */}
                 <div className="container hero-grid">
                     <div className="hero-content">
+                        {auth.isLoggedIn && ( // Conditionally render welcome message if logged in
+                            <p className="welcome-message">Welcome, <span className="highlight">{capitalizedDisplayName}</span>!</p>
+                        )}
                         <h1 className="hero-headline">Craving something delicious?<span className="highlight">We Deliver!</span></h1>
                         <p className="sub-headline">Order from your Favorite restaurants and get your food delivered straight to your doorstep.</p>
                         <div>
-                            <button className="btn btn-secondary-solid" onClick={handleOrderNowClick}>Order Now</button>
+                            {/* Call the handleOrderNowClick defined in the parent Home component */}
+                            <button className="btn btn-primary-solid" onClick={handleOrderNowClick}>ORDER NOW</button> {/* Changed to primary-solid */}
                         </div>
                         <p className="popular-search-text">Popular: Pizza, Biriyani, Burgers, Sushi, etc.. </p>
                     </div>
@@ -154,11 +160,16 @@ function Home({ onSignInClick, onLoginSuccess }) {
             )}
 
             <main className="flex-grow">
+                {/* Render the nested HeroSection component */}
                 <HeroSection />
+                
                 {/* Attach the ref to the section containing the RestaurantCarousel */}
-                <section ref={restaurantCarouselRef}>
-                    {showRestaurants && <RestaurantCarousel />}
-                </section>
+                {/* Conditionally render RestaurantCarousel based on showRestaurants state */}
+                {showRestaurants && (
+                    <section ref={restaurantCarouselRef} className="restaurant-carousel-section">
+                        <RestaurantCarousel />
+                    </section>
+                )}
             </main>
             <Footer />
         </div>
