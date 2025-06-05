@@ -1,15 +1,19 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../AdminDashboard.css';
 
 function AdminDashboard() {
     const auth = useAuth();
-    const navigate = useNavigate(); // Initialize useNavigate
+    const navigate = useNavigate();
 
     const handleLogout = () => {
-        auth.logout(); // Perform the logout operation
-        navigate('/'); // Redirect to the home page after logout
+        auth.logout();
+        navigate('/');
+    };
+
+    const handleManageRestaurantsClick = () => {
+        navigate('/admin/manage-restaurants'); // Navigate to the new page
     };
 
     return (
@@ -27,7 +31,12 @@ function AdminDashboard() {
                 <div className="admin-card">
                     <h2 className="admin-card-title">Manage Restaurants</h2>
                     <p className="admin-card-description">Approve new restaurants, update existing ones.</p>
-                    <button className="admin-card-button restaurants-button">Go to Restaurant Management</button>
+                    <button
+                        className="admin-card-button restaurants-button"
+                        onClick={handleManageRestaurantsClick}
+                    >
+                        Go to Restaurant Management
+                    </button>
                 </div>
                 <div className="admin-card">
                     <h2 className="admin-card-title">View Orders</h2>
@@ -42,7 +51,7 @@ function AdminDashboard() {
             </div>
 
             <button
-                onClick={handleLogout} // Call the new handleLogout function
+                onClick={handleLogout}
                 className="admin-logout-button"
             >
                 Logout
