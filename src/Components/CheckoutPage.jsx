@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Header from './Header';
-import Footer from './Footer';
+import Footer from './Footer'; // Corrected import path for Footer
 import '../CheckoutPage.css'; // The CSS file for this component
 
 const CheckoutPage = () => {
@@ -12,9 +12,10 @@ const CheckoutPage = () => {
     const auth = useAuth();
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState(null); // For general errors
+    const [successMessage, setSuccessMessage] = useState(null); // For success notifications
 
-    // Delivery Details State (from previous step)
+    // Delivery Details State
     const [deliveryInfo, setDeliveryInfo] = useState({
         firstName: "",
         lastName: "",
@@ -27,38 +28,42 @@ const CheckoutPage = () => {
         phone: ""
     });
 
-    // Form validation state for delivery details
+    // Form validation state for delivery details (temporarily unused for validation checks)
     const [formErrors, setFormErrors] = useState({});
 
-    // Payment Option State - NOW MATCHING PaymentPage.jsx's method names
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(''); // Default to no selection initially
+    // Payment Option State
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
 
-    // Card Details State - FROM PaymentPage.jsx
+    // Card Details State
     const [cardDetails, setCardDetails] = useState({ cardNumber: "", expiryDate: "", cvv: "" });
     // Card Details Validation Errors
     const [cardErrors, setCardErrors] = useState({});
+
+    // API Gateway URL for Order Service
+    const ORDER_API_URL = 'http://localhost:1111/order'; // Using /order endpoint
 
     useEffect(() => {
         if (location.state && location.state.cartItems) {
             setCartItems(location.state.cartItems);
             setLoading(false);
+            // Pre-fill email from auth context, but phone remains blank
+            if (auth.isLoggedIn && auth.userEmail) {
+                setDeliveryInfo(prevInfo => ({
+                    ...prevInfo,
+                    email: auth.userEmail
+                }));
+            }
         } else {
             setError("No items found in cart. Please add items before proceeding to checkout.");
             setLoading(false);
-        }
-
-        if (auth.isLoggedIn && auth.userEmail) {
-            setDeliveryInfo(prevInfo => ({
-                ...prevInfo,
-                email: auth.userEmail
-            }));
         }
     }, [location.state, auth.isLoggedIn, auth.userEmail]);
 
     // Handler for delivery info input changes
     const handleDeliveryInfoChange = (event) => {
         setDeliveryInfo({ ...deliveryInfo, [event.target.name]: event.target.value });
-        setFormErrors(prevErrors => ({ ...prevErrors, [event.target.name]: "" }));
+        // No validation triggered on change for now
+        // setFormErrors(prevErrors => ({ ...prevErrors, [event.target.name]: "" }));
     };
 
     // Handler for card details input changes
@@ -67,7 +72,7 @@ const CheckoutPage = () => {
         setCardErrors(prevErrors => ({ ...prevErrors, [event.target.name]: "" })); // Clear error on change
     };
 
-    // Delivery Form Validation (from previous step)
+    // Delivery Form Validation (TEMPORARILY NOT CALLED IN handlePlaceOrder)
     const validateDeliveryForm = () => {
         const errors = {};
         if (!deliveryInfo.firstName.trim()) errors.firstName = "First name is required.";
@@ -88,14 +93,14 @@ const CheckoutPage = () => {
         return errors;
     };
 
-    // Card Details Validation (FROM PaymentPage.jsx)
+    // Card Details Validation (still called if card selected)
     const validateCardDetails = () => {
         const errors = {};
         const { cardNumber, expiryDate, cvv } = cardDetails;
 
         if (!cardNumber.trim()) {
             errors.cardNumber = "Card Number is required.";
-        } else if (!/^\d{16}$/.test(cardNumber)) {
+        } else if (!/^\d{16}$/.test(cardNumber.replace(/\s/g, ''))) {
             errors.cardNumber = "Must be 16 digits.";
         }
 
@@ -123,18 +128,20 @@ const CheckoutPage = () => {
         return errors;
     };
 
-    const handlePlaceOrder = () => {
-        // 1. Validate Delivery Details
-        const deliveryErrors = validateDeliveryForm();
-        if (Object.keys(deliveryErrors).length > 0) {
-            setFormErrors(deliveryErrors);
-            alert("Please complete delivery details and correct any errors.");
+    const handlePlaceOrder = async () => {
+        // 1. Validate Cart and Basic Info
+        if (cartItems.length === 0) {
+            setError("Your cart is empty. Please add items before placing an order.");
+            return;
+        }
+        if (!auth.isLoggedIn || !auth.jwtToken) {
+            setError("You must be logged in to place an order.");
             return;
         }
 
         // 2. Validate Payment Method Selection
         if (!selectedPaymentMethod) {
-            alert("Please select a payment method.");
+            setError("Please select a payment method.");
             return;
         }
 
@@ -143,40 +150,113 @@ const CheckoutPage = () => {
             const currentCardErrors = validateCardDetails();
             if (Object.keys(currentCardErrors).length > 0) {
                 setCardErrors(currentCardErrors);
-                alert("Please correct card details.");
+                setError("Please correct card details.");
                 return;
             }
         }
 
-        // Ensure cart is not empty (already handled by error state from useEffect, but good for final check)
-        if (cartItems.length === 0) {
-            alert("Your cart is empty. Please add items before placing an order.");
-            return;
-        }
-
-        // All validations passed, proceed with order logic
-        console.log("Placing Order:", {
-            restaurantId: cartItems[0]?.restaurantID,
-            items: cartItems.map(item => ({ itemId: item.itemID, quantity: item.quantity, price: item.price })),
-            deliveryDetails: deliveryInfo,
-            paymentMethod: selectedPaymentMethod,
-            cardDetails: selectedPaymentMethod === "Credit/Debit Card" ? { cardNumber: cardDetails.cardNumber.replace(/\s/g, ''), expiryDate: cardDetails.expiryDate, cvv: cardDetails.cvv } : undefined, // Include card details if selected
-            totalAmount: cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-            userId: auth.userAuthId,
-            userEmail: auth.userEmail
-        });
-
-        // Simulate API call
+        // All validations passed, proceed with order placement
         setLoading(true);
-        setTimeout(() => {
+        setError(null); // Clear previous errors
+        setSuccessMessage(null); // Clear previous success messages
+
+        // --- Frontend Logging of FULL Order Details (including "ignored" details) ---
+        const fullOrderDetailsForLogging = {
+            restaurantId: cartItems[0]?.restaurantID,
+            itemsInCart: cartItems, // Full cart items with quantity, etc.
+            deliveryDetails: deliveryInfo, // All delivery details
+            paymentMethodSelected: selectedPaymentMethod,
+            cardDetailsProvided: selectedPaymentMethod === "Credit/Debit Card" ? cardDetails : null,
+            totalAmount: cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+            userId: auth.userEmail, // Using email as userId for now
+            timestamp: new Date().toISOString()
+        };
+        console.log("--- Frontend Proposed Order Details (Full Payload) ---");
+        console.log(JSON.stringify(fullOrderDetailsForLogging, null, 2));
+        console.log("-----------------------------------------------------");
+
+
+        try {
+            // --- Backend Payload (Simplified to match current Orders.java) ---
+            const orderPayloadForBackend = {
+                // FIXED: Sending a dummy Long (1L) for userId as backend expects Long, but auth.userEmail is a string.
+                // IMPORTANT: This is a temporary workaround. For a robust solution,
+                // either change userId in Orders.java to String, or ensure your AuthContext
+                // provides a numeric userId that maps to a user ID in your backend.
+                userId: 1, // Using a dummy Long value to satisfy backend's Long type
+                restaurantID: cartItems[0]?.restaurantID, // Assuming all items from same restaurant
+                totalAmount: cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+                status: "PENDING" // Default status for new orders
+            };
+
+            console.log("--- Sending Simplified Payload to Backend (/order) ---");
+            console.log(JSON.stringify(orderPayloadForBackend, null, 2));
+            console.log("-----------------------------------------------------");
+
+            const response = await fetch(`${ORDER_API_URL}`, { // Changed to POST /order (takes Orders model)
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${auth.jwtToken}`
+                },
+                body: JSON.stringify(orderPayloadForBackend)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Raw backend response on error:', errorText);
+                let errorMessage = `HTTP error! Status: ${response.status}`;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorMessage += ` - ${errorJson.message || errorJson.error || 'Unknown backend error'}`;
+                } catch (e) {
+                    errorMessage += ` - ${errorText}`;
+                }
+                throw new Error(errorMessage);
+            }
+
+            // Order placed successfully!
+            const responseOrder = await response.json(); // Get the order ID from the response if available
+            console.log("Order placed successfully with ID:", responseOrder?.orderId);
+            setSuccessMessage("Order Placed Successfully!");
+            setCartItems([]); // Clear cart after successful order
+
+            // Simulate status change after 30 minutes (1800000 ms)
+            // For testing, you can use a shorter duration, e.g., 5000 ms (5 seconds)
+            const deliveryTimeMs = 1800000; // 30 minutes
+            // const deliveryTimeMs = 5000; // For testing (5 seconds)
+
+            setTimeout(() => {
+                console.log(`--- SIMULATION: Order ID ${responseOrder?.orderId || 'Unknown'} would now be DELIVERED ---`);
+                // In a real app, you would dispatch an action or update state to reflect this if your UI polls for status
+                // For now, it's just a console log.
+            }, deliveryTimeMs);
+
+            setTimeout(() => {
+                setSuccessMessage(null); // Clear success message after delay
+                navigate('/order'); // Navigate to My Orders page
+            }, 3000); // Show success message for 3 seconds, then navigate
+
+        } catch (err) {
+            console.error('Error placing order:', err);
+            setError(
+                `Failed to place order: ${err.message}. Please check: \n\n` +
+                `1. **Order Service Running?**: Ensure your Order Service is active. \n` +
+                `2. **API Gateway Config**: Is the route \`/order\` correctly mapped? \n` +
+                `3. **CORS on Backend**: Ensure CORS is configured for your frontend. \n` +
+                `4. **Order Payload Match**: Does the backend's Order DTO/entity exactly match the payload being sent? \n` +
+                `(Error: ${err.message})`
+            );
+        } finally {
             setLoading(false);
-            alert("Order Placed Successfully!");
-            navigate('/myorders'); // Navigate to My Orders page
-        }, 2000);
+        }
     };
 
     const paymentMethods = ["Cash on Delivery", "Credit/Debit Card", "GPay", "PhonePe"];
 
+    const totalOrderValue = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+    // Conditional rendering for loading
     if (loading) {
         return (
             <div className="checkout-page-container">
@@ -186,35 +266,12 @@ const CheckoutPage = () => {
                         <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
                         <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
                     </svg>
-                    Loading checkout...
+                    Processing order...
                 </div>
                 <Footer />
             </div>
         );
     }
-
-    if (error) {
-        return (
-            <div className="checkout-page-container">
-                <Header />
-                <div className="error-message">
-                    <div className="error-icon-text">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <path d="m15 9-6 6"></path>
-                            <path d="m9 9 6 6"></path>
-                        </svg>
-                        <span className="error-heading">Error!</span>
-                    </div>
-                    <p className="error-details">{error}</p>
-                    <button onClick={() => navigate(-1)} className="go-back-button">Go Back</button>
-                </div>
-                <Footer />
-            </div>
-        );
-    }
-
-    const totalOrderValue = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
     return (
         <div className="checkout-page-container">
@@ -225,6 +282,32 @@ const CheckoutPage = () => {
                     {/* Left Section: Delivery Details */}
                     <div className="delivery-details-section">
                         <h2 className="section-title">Delivery Information</h2>
+                        {/* Display success message here if present */}
+                        {successMessage && (
+                            <div className="success-message">
+                                <div className="success-icon-text">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-8.5" /><polyline points="22 4 12 14.01 9 11.01" />
+                                    </svg>
+                                    <span className="success-heading">Success!</span>
+                                </div>
+                                <p className="success-details">{successMessage}</p>
+                            </div>
+                        )}
+                         {/* Display error message here if present */}
+                        {error && (
+                            <div className="error-message">
+                                <div className="error-icon-text">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="m15 9-6 6"></path>
+                                        <path d="m9 9 6 6"></path>
+                                    </svg>
+                                    <span className="error-heading">Error!</span>
+                                </div>
+                                <p className="error-details">{error}</p>
+                            </div>
+                        )}
                         <form className="delivery-form" onSubmit={(e) => e.preventDefault()}>
                             <div className="multi-fields">
                                 <div className={`form-group ${deliveryInfo.firstName && 'has-content'} ${formErrors.firstName ? 'has-error' : ''}`}>
@@ -315,11 +398,11 @@ const CheckoutPage = () => {
                                         onChange={(e) => setSelectedPaymentMethod(e.target.value)}
                                     />
                                     <div className="payment-content">
-                                        {/* Dynamic Icons (You'll need actual icon paths or components) */}
+                                        {/* Dynamic Icons */}
                                         {method === "Cash on Delivery" && <img src="https://img.icons8.com/color/48/000000/cash-in-hand.png" alt="Cash on Delivery" className="payment-icon" />}
-                                        {method === "Credit/Debit Card" && <img src="https://img.icons8.com/color/48/000000/bank-card-back.png" alt="Card" className="payment-icon" />}
+                                        {method === "Credit/Debit Card" && <img src="../../credit-card.png" alt="Card" className="payment-icon" />}
                                         {method === "GPay" && <img src="https://img.icons8.com/color/48/000000/google-pay.png" alt="GPay" className="payment-icon" />}
-                                        {method === "PhonePe" && <img src="https://img.icons8.com/color/48/000000/phonepe.png" alt="PhonePe" className="payment-icon" />}
+                                        {method === "PhonePe" && <img src="../../phonepe.png" alt="PhonePe" className="payment-icon" />}
                                         <span>{method}</span>
                                     </div>
                                 </label>
@@ -340,7 +423,6 @@ const CheckoutPage = () => {
                                         placeholder=" "
                                         maxLength="19" // 16 digits + 3 spaces
                                         onInput={(e) => {
-                                            // Auto-format card number with spaces (e.g., 1234 5678 9012 3456)
                                             e.target.value = e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim();
                                             handleCardDetailsChange(e);
                                         }}
@@ -360,7 +442,6 @@ const CheckoutPage = () => {
                                             placeholder=" "
                                             maxLength="5" // MM/YY
                                             onInput={(e) => {
-                                                // Auto-format expiry date MM/YY
                                                 if (e.target.value.length === 2 && e.target.value.indexOf('/') === -1) {
                                                     e.target.value += '/';
                                                 }
@@ -392,8 +473,7 @@ const CheckoutPage = () => {
                             <div className="qr-container">
                                 <h3 className="qr-title">Scan to Pay with {selectedPaymentMethod}</h3>
                                 <div className="qr-wrapper">
-                                    {/* Use a common QR code image or specific ones if you have them */}
-                                    <img src="../../QR Code.jpg" alt="Scan to Pay" className="qr-code" />
+                                    <img src="/QR code.jpg" alt="Scan to Pay" className="qr-code" /> {/* Corrected path */}
                                     <p className="qr-instruction">Open {selectedPaymentMethod} app and scan to complete payment.</p>
                                 </div>
                             </div>

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import '../OrderMgmt.css';
-// import Header from './Header'; // REMOVED: Header is now in App.jsx
 import { useAuth } from '../context/AuthContext';
+import Footer from './Footer'; // Assuming Footer exists and needs to be rendered
 
 const OrderMgmt = () => {
-    const API_BASE_URL = 'http://localhost:1111/order';
+    const ORDER_API_BASE_URL = 'http://localhost:1111/order';
+    const RESTAURANT_API_BASE_URL = 'http://localhost:1111/restaurant'; // Assuming this is your Restaurant Service base URL
 
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -15,12 +16,12 @@ const OrderMgmt = () => {
     const auth = useAuth();
 
     useEffect(() => {
-        console.log(`Frontend connecting to backend at: ${API_BASE_URL}`);
+        console.log(`Frontend connecting to backend at: ${ORDER_API_BASE_URL}`);
     }, []);
 
     useEffect(() => {
         if (!auth.isLoading) {
-            if (auth.isLoggedIn) {
+            if (auth.isLoggedIn && auth.jwtToken) { // Ensure token is available
                 let statusToFilter = filterStatus;
                 if (activeTab === 'current' && filterStatus === 'All') {
                     statusToFilter = 'PENDING';
@@ -40,7 +41,7 @@ const OrderMgmt = () => {
         setLoading(true);
         setError(null);
 
-        const url = status && status !== 'All' ? `${API_BASE_URL}/list?status=${status}` : `${API_BASE_URL}/list`;
+        const url = status && status !== 'All' ? `${ORDER_API_BASE_URL}/list?status=${status}` : `${ORDER_API_BASE_URL}/list`;
         console.log(`Fetching orders from: ${url}`);
         console.log(`Using JWT Token: ${auth.jwtToken ? auth.jwtToken.substring(0, 30) + '...' : 'No Token'}`);
 
@@ -65,19 +66,46 @@ const OrderMgmt = () => {
                 }
                 throw new Error(errorMessage);
             }
-            const data = await response.json();
-            console.log('Successfully fetched data:', data);
-            setOrders(data);
+            let ordersData = await response.json();
+            console.log('Successfully fetched raw orders:', ordersData);
+
+            // Fetch restaurant names for each order
+            const ordersWithRestaurantNames = await Promise.all(ordersData.map(async (order) => {
+                if (order.restaurantID) {
+                    try {
+                        const restaurantResponse = await fetch(`${RESTAURANT_API_BASE_URL}/viewRestaurantById/${order.restaurantID}`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${auth.jwtToken}` // Assuming restaurant service also needs auth
+                            }
+                        });
+                        if (restaurantResponse.ok) {
+                            const restaurantData = await restaurantResponse.json();
+                            return { ...order, restaurantName: restaurantData.name || `ID: ${order.restaurantID}` };
+                        } else {
+                            console.warn(`Could not fetch restaurant name for ID: ${order.restaurantID}. Status: ${restaurantResponse.status}`);
+                            return { ...order, restaurantName: `ID: ${order.restaurantID}` };
+                        }
+                    } catch (restErr) {
+                        console.error(`Error fetching restaurant name for ID ${order.restaurantID}:`, restErr);
+                        return { ...order, restaurantName: `ID: ${order.restaurantID}` };
+                    }
+                }
+                return { ...order, restaurantName: 'N/A' }; // No restaurant ID
+            }));
+
+            setOrders(ordersWithRestaurantNames);
         } catch (err) {
-            console.error('Error fetching orders:', err);
+            console.error('Error fetching orders or restaurant names:', err);
             setError(
                 `Failed to fetch orders: ${err.message}. Please check the following: \n\n` +
-                `1. **Backend Running?**: Ensure your API Gateway (port 1111) and Order Service are running. \n` +
-                `2. **CORS Configuration**: Verify your API Gateway and Order Service have correct \`@CrossOrigin\` annotations for \`http://localhost:5176\`. \n` +
+                `1. **Backend Running?**: Ensure your API Gateway (port 1111), Order Service, and Restaurant Service are running. \n` +
+                `2. **CORS Configuration**: Verify your backend services have correct \`@CrossOrigin\` annotations for \`http://localhost:5176\`. \n` +
                 `3. **Backend Restart**: Remember to restart your backend services after *any* code changes. \n` +
-                `4. **Authentication**: Ensure you are logged in. (Error: ${err.message}) \n` +
+                `4. **Authentication**: Ensure you are logged in. \n` +
                 `5. **Network/Firewall**: Temporarily disable any local firewalls or antivirus that might block ports. \n` +
-                `6. **Database Data**: Ensure your backend database contains order data.`
+                `6. **Database Data**: Ensure your backend database contains order and restaurant data.`
             );
         } finally {
             setLoading(false);
@@ -86,7 +114,7 @@ const OrderMgmt = () => {
 
     return (
         <div className="my-orders-page">
-            {/* <Header /> Removed Header */}
+            {/* Header is managed by App.jsx now */}
 
             <div className="main-content">
                 <h1 className="page-title">My Orders</h1>
@@ -122,7 +150,7 @@ const OrderMgmt = () => {
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value)}
                         >
-                            <option value="All">All Statuses</option>
+                            <option value="All">All</option>
                             <option value="PENDING">Pending</option>
                             <option value="DELIVERED">Delivered</option>
                             <option value="CANCELLED">Cancelled</option>
@@ -170,13 +198,15 @@ const OrderMgmt = () => {
                                         {order.status}
                                     </span>
                                 </div>
-                                <p className="order-restaurant-id">Restaurant ID: <span>{order.restaurantId}</span></p>
-                                <p className="order-total-amount">Total Amount: <span>${order.totalAmount?.toFixed(2)}</span></p>
+                                {/* Display Restaurant Name */}
+                                <p className="order-restaurant-name">Restaurant: <span>{order.restaurantName || 'Loading...'}</span></p>
+                                <p className="order-total-amount">Total Amount: <span>₹{order.totalAmount?.toFixed(2)}</span></p>
                             </div>
                         ))
                     )}
                 </div>
             </div>
+            <Footer />
         </div>
     );
 };
