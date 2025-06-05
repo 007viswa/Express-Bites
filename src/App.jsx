@@ -13,6 +13,7 @@ import MenuPage from './Components/MenuPage';
 import Header from './Components/Header';
 import Unauthorized from './Components/Unauthorized';
 import ProtectedRoute from './Components/ProtectedRoute';
+import CheckoutPage from './Components/CheckoutPage';
 
 const NotFound = () => (
     <div style={{ padding: '80px 20px', textAlign: 'center', minHeight: 'calc(100vh - 140px)' }}>
@@ -67,7 +68,8 @@ function App() {
                                 <AdminDashboard />
                             </ProtectedRoute>
                         }
-                    />                    
+                    />  
+                    <Route path='/checkout' element={<CheckoutPage />} />                  
                     <Route path="/unauthorized" element={<Unauthorized />} />
                     <Route path="*" element={<NotFound />} />
                 </Routes>

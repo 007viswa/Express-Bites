@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import '../MenuPage.css'; // Import the shared CSS file
 
 const Cart = ({
@@ -11,6 +12,13 @@ const Cart = ({
   handleDecreaseQuantity,
   handleRemoveFromCart,
 }) => {
+  const navigate = useNavigate(); // Initialize useNavigate
+
+  const handleProceedToCheckout = () => {
+    setIsCartModalOpen(false); // Close the cart modal
+    navigate('/checkout', { state: { cartItems: cartItems } }); // Navigate and pass cart items
+  };
+
   return (
     <>
       {/* Floating Cart Button */}
@@ -43,7 +51,7 @@ const Cart = ({
               ) : (
                 <ul className="cart-items-list">
                   {cartItems.map((item) => (
-                    <li key={item.itemID} className="cart-item"> {/* Changed key from item.id to item.itemID */}
+                    <li key={item.itemID} className="cart-item">
                       <div className="cart-item-details">
                         <span className="cart-item-name">{item.name}</span>
                         <span className="cart-item-price">₹{item.price * item.quantity}</span>
@@ -62,9 +70,13 @@ const Cart = ({
             <div className="cart-modal-footer">
               <div className="cart-total">
                 <span>Total:</span>
-                <span className="total-price">₹{totalCartPrice}</span>
+                <span className="total-price">₹{totalCartPrice.toFixed(2)}</span> {/* Ensure total price is formatted */}
               </div>
-              <button className="checkout-button" disabled={cartItems.length === 0}>
+              <button
+                className="checkout-button"
+                disabled={cartItems.length === 0}
+                onClick={handleProceedToCheckout} // Call the new handler
+              >
                 Proceed to Checkout
               </button>
             </div>
