@@ -159,6 +159,7 @@ body {
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25);
 }
 
+
 /* Hero Section */
 
 /* In your main CSS file (e.g., index.css or App.css) */
@@ -248,14 +249,14 @@ body {
 }
 
 .btn-secondary-solid {
-  background-color: var(--dark-orange); /* Main button color */
-  color: var(--white);
+  background-color: white;/*in button color */
+  color: black;
   padding: 12px 25px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 .btn-secondary-solid:hover {
-  background-color: #CC5200;
+  background-color: #ed670e;
   transform: translateY(-1px);
 }
 

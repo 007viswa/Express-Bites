@@ -9,10 +9,7 @@ const Profile = () => {
     const [profileData, setProfileData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
- 
-    // This is the URL to your backend's fetchByEmail endpoint.
-    // Assuming your API Gateway is at 1111 and routes /auth to the SecurityServer.
-    // If you're calling SecurityServer directly and it's on 9090, use 'http://localhost:9090/auth/fetchByEmail'
+
     const API_BASE_URL = 'http://localhost:1111/auth/fetchByEmail';
  
     useEffect(() => {
@@ -51,9 +48,6 @@ const Profile = () => {
  
                 const data = await response.json();
                
-                // Your backend returns Optional<UserInfo>, which typically deserializes
-                // as either the UserInfo object or null/empty object if not found.
-                // We'll check if the data object is actually populated.
                 if (data && data.userId) { // Check for a key that indicates valid UserInfo
                     setProfileData(data);
                 } else {

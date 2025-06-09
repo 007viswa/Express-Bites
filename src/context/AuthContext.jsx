@@ -116,6 +116,10 @@ export const AuthProvider = ({ children }) => {
         console.log('AuthContext: User logged out.');
     };
 
+    const cacheOrders = (cache) => {
+        localStorage.setItem('expressbite_orders_cache', JSON.stringify(cache));
+    };
+
     const authContextValue = {
         isLoggedIn,
         userRole,
@@ -124,6 +128,7 @@ export const AuthProvider = ({ children }) => {
         isLoading, // Provide isLoading in context
         login,
         logout,
+        cacheOrders, // Provide cacheOrders in context
     };
 
     return (

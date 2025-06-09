@@ -82,9 +82,8 @@
 
 .form-actions {
     display: flex;
-    justify-content: flex-end; /* Align buttons to the right */
-    gap: 15px; /* Space between buttons */
-    margin-top: 30px;
+    gap: 10px;
+    margin-top: 20px;
 }
 
 .submit-button, .back-button {
@@ -131,6 +130,66 @@
     background-color: #e0e0e0; /* Darker grey on hover */
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.cancel-button {
+    background-color: #f0ad4e;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 0 10px;
+}
+
+.cancel-button:hover {
+    background-color: #ec971f;
+}
+
+.restaurants-list {
+    margin-top: 2rem;
+    padding: 1rem;
+}
+
+.restaurants-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.restaurants-table th,
+.restaurants-table td {
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+.restaurants-table th {
+    background-color: #f4f4f4;
+}
+
+.edit-button,
+.delete-button {
+    padding: 0.5rem 1rem;
+    margin: 0 0.25rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.edit-button {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.delete-button {
+    background-color: #f44336;
+    color: white;
+}
+
+.edit-button:hover,
+.delete-button:hover {
+    opacity: 0.8;
 }
 
 /* Responsive adjustments */

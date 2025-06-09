@@ -11,8 +11,6 @@ function LoginPopup({ onClose, triggerContext, onLoginSuccess }) {
     const [isActive, setIsActive] = useState(false);
     const [isSignup, setIsSignup] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
-    // Removed loginSuccessMessage state as it's handled by Home.jsx
-    // const [loginSuccessMessage, setLoginSuccessMessage] = useState(''); // For internal popup success
 
     const [loginEmail, setLoginEmail] = useState(''); // Maps to 'email' for login
     const [loginPassword, setLoginPassword] = useState('');
@@ -29,7 +27,7 @@ function LoginPopup({ onClose, triggerContext, onLoginSuccess }) {
     useEffect(() => {
         const timer = setTimeout(() => {
             setIsActive(true);
-        }, 50);
+        }, 10);
         return () => clearTimeout(timer);
     }, []);
 

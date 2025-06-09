@@ -3,17 +3,8 @@ import Header from './Header'; // This import should now correctly point to your
 import Footer from './Footer'; // Import the Footer component
 // No need to import LoginPopup here unless AboutUs directly triggers it
 
-const AboutUs = () => {
-  // Define a placeholder or actual function for onSignInClick.
-  // This function will now be passed to the *shared* Header component.
-  const handleSignInClick = () => {
-    console.log("Sign In clicked from AboutUs page. Implement your login popup logic here.");
-    // For a consistent experience, you would likely lift the state for showLoginPopup
-    // to a common ancestor (like App.jsx) or use a global state management system
-    // (like Context API if AuthContext also handles popup state, or Redux/Zustand).
-    // For now, this console log indicates it's being called.
-  };
-
+const AboutUs = ({onSignInClick}) => {
+  
   return (
     <div style={{
       fontFamily: 'Arial, sans-serif',
@@ -23,7 +14,7 @@ const AboutUs = () => {
       flexDirection: 'column',
     }}>
       {/* Pass onSignInClick to the Header */}
-      <Header onSignInClick={handleSignInClick} />
+      <Header onSignInClick={onSignInClick} />
 
       <main style={{
         flexGrow: 1,

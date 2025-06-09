@@ -45,7 +45,28 @@ const OrderMgmt = () => {
         setLoading(true);
         setError(null);
 
-        const url = status && status !== 'All' ? `${ORDER_API_BASE_URL}/list?status=${status}` : `${ORDER_API_BASE_URL}/list`;
+        // Get userEmail and role from auth context or localStorage
+        const userEmail = auth.userEmail;
+        const userRole = auth.userRole;
+        
+        // Construct URL based on user role and filters
+        let url = `${ORDER_API_BASE_URL}/list`;
+
+        // Add query parameters based on role and status
+        if (userRole === 'ADMIN') {
+            // Admin can see all orders or filter by status
+            if (status && status !== 'All') {
+                url = `${ORDER_API_BASE_URL}/list?status=${status}`;
+            }
+        } else {
+            // Regular users see their orders filtered by email and optionally by status
+            if (status && status !== 'All') {
+                url = `${ORDER_API_BASE_URL}/list?status=${status}&email=${userEmail}`;
+            } else {
+                url = `${ORDER_API_BASE_URL}/list?email=${userEmail}`;
+            }
+        }
+
         console.log(`Fetching orders from: ${url}`);
         console.log(`Using JWT Token: ${auth.jwtToken ? auth.jwtToken.substring(0, 30) + '...' : 'No Token'}`);
 
@@ -73,35 +94,27 @@ const OrderMgmt = () => {
             let backendOrders = await response.json();
             console.log('Successfully fetched raw backend orders:', backendOrders);
 
-            // Load detailed orders from localStorage
-            const cachedOrdersJson = localStorage.getItem('expressbite_orders_cache');
-            let cachedOrders = [];
-            if (cachedOrdersJson) {
-                try {
-                    cachedOrders = JSON.parse(cachedOrdersJson);
-                    console.log('Successfully loaded cached orders from localStorage:', cachedOrders);
-                } catch (e) {
-                    console.error('Error parsing cached orders from localStorage:', e);
-                    cachedOrders = [];
-                }
-            }
+            // Load detailed orders from localStorage (cache)
+            let cachedOrders = {};
+            try {
+                cachedOrders = JSON.parse(localStorage.getItem('expressbite_orders_cache')) || {};
+            } catch { cachedOrders = {}; }
 
-            // Merge backend orders with cached details and fetch restaurant names
+            // Merge backend orders with cached details
             const ordersToDisplay = await Promise.all(backendOrders.map(async (backendOrder) => {
-                const cachedDetail = cachedOrders.find(co => co.orderId === backendOrder.orderId);
+                const cachedDetail = cachedOrders[backendOrder.orderId];
                 let orderDisplay = { ...backendOrder };
 
                 if (cachedDetail) {
-                    // Overwrite/add detailed fields from cache
                     orderDisplay = {
                         ...orderDisplay,
-                        ...cachedDetail, // This merges deliveryDetails, orderItems, paymentMethod
-                        status: backendOrder.status // Ensure backend's current status is prioritized
+                        ...cachedDetail, // This merges deliveryDetails, orderItems, paymentMethod, etc.
+                        status: backendOrder.status // Always use backend status
                     };
                 }
 
-                // Fetch restaurant name
-                if (orderDisplay.restaurantID && !orderDisplay.restaurantName) { // Only fetch if ID exists and name isn't already in cache
+                // Fetch restaurant name if needed (as before)
+                if (orderDisplay.restaurantID && !orderDisplay.restaurantName) {
                     try {
                         const restaurantResponse = await fetch(`${RESTAURANT_API_BASE_URL}/viewRestaurantById/${orderDisplay.restaurantID}`, {
                             method: 'GET',
@@ -114,11 +127,9 @@ const OrderMgmt = () => {
                             const restaurantData = await restaurantResponse.json();
                             orderDisplay.restaurantName = restaurantData.name || `ID: ${orderDisplay.restaurantID}`;
                         } else {
-                            console.warn(`Could not fetch restaurant name for ID: ${orderDisplay.restaurantID}. Status: ${restaurantResponse.status}`);
                             orderDisplay.restaurantName = `ID: ${orderDisplay.restaurantID}`;
                         }
-                    } catch (restErr) {
-                        console.error(`Error fetching restaurant name for ID ${orderDisplay.restaurantID}:`, restErr);
+                    } catch {
                         orderDisplay.restaurantName = `ID: ${orderDisplay.restaurantID}`;
                     }
                 } else if (!orderDisplay.restaurantID) {
@@ -143,6 +154,15 @@ const OrderMgmt = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const cacheOrderDetails = (orderId, orderDetails) => {
+        let cache = {};
+        try {
+            cache = JSON.parse(localStorage.getItem('expressbite_orders_cache')) || {};
+        } catch {}
+        cache[orderId] = orderDetails;
+        localStorage.setItem('expressbite_orders_cache', JSON.stringify(cache));
     };
 
     const handleOrderCardClick = (order) => {

@@ -11,21 +11,21 @@ import { useAuth } from './context/AuthContext'; // Import useAuth
 import MenuPage from './Components/MenuPage';
 import Header from './Components/Header';
 import Unauthorized from './Components/Unauthorized';
-// ProtectedRoute is already imported from './Components/ProtectedRoute' if you use it,
-// but we'll define a simpler PrivateRoute/AdminRoute here for clarity and self-containment.
+import RestaurantCarousel from './Components/RestaurantCarousel'; // Import RestaurantCarousel
 import CheckoutPage from './Components/CheckoutPage';
 import Profile from './Components/Profile';
 import ManageRestaurants from './Components/ManageRestaurants'; // Import ManageRestaurants
+import ManageMenuItems from './Components/ManageMenuItems'; 
+import ManageUsers from './Components/ManageUsers';// Import ManageMenuItems
 
-// Define PrivateRoute and AdminRoute components inline for this file
-// (You might have these in a separate file like './Components/ProtectedRoute.jsx' already)
+
 const PrivateRoute = ({ children, roles }) => {
     const auth = useAuth(); // Ensure useAuth is accessible here
     if (auth.isLoading) {
         return <div>Loading authentication...</div>; // Or a spinner/loader
     }
     if (!auth.isLoggedIn) {
-        return <Navigate to="/login" replace />; // Redirect to login if not authenticated
+        return <Navigate to="/" replace />; // Redirect to login if not authenticated
     }
     // Check roles if specified
     if (roles && auth.userRole && !roles.includes(auth.userRole)) {
@@ -76,6 +76,7 @@ function App() {
             {/* ALL routes go inside the <Routes> component */}
             <Routes>
                 <Route path="/" element={<Home onSignInClick={handleSignInClick} onLoginSuccess={handleLoginSuccess} />} />
+                <Route path="/home" element={<Home />} />
                 <Route path="/about-us" element={<AboutUs onSignInClick={handleSignInClick} />} />
                 <Route path="/partner-with-us" element={<PartnerWithUs onSignInClick={handleSignInClick} />} />
                 <Route path="/how-it-works" element={<HowItWorks onSignInClick={handleSignInClick} />} />
@@ -86,13 +87,16 @@ function App() {
                 <Route path="/checkout" element={<PrivateRoute><CheckoutPage /></PrivateRoute>} />
                 
                 {/* Public restaurant menu (no login required to view a menu) */}
+                <Route path="/restaurant" element={<PrivateRoute><RestaurantCarousel /></PrivateRoute>} />
                 <Route path="/restaurant/:restaurantId/menu" element={<MenuPage />} />
 
                 {/* Admin Protected Routes */}
                 {/* Make sure 'ADMIN' matches the exact role string from your backend */}
                 <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                <Route path="/admin/manage-user" element={<AdminRoute allowedRoles={['ADMIN']}><ManageUsers /></AdminRoute>} />
+                <Route path="/admin/manage-orders" element={<AdminRoute><OrderMgmt /></AdminRoute>} />
                 <Route path="/admin/manage-restaurants" element={<AdminRoute><ManageRestaurants /></AdminRoute>} />
-                
+                <Route path="/admin/manage-menuitems" element={<AdminRoute><ManageMenuItems /></AdminRoute>} />
                 {/* Public Unauthorized page */}
                 <Route path="/unauthorized" element={<Unauthorized />} />
                 

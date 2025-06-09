@@ -12,14 +12,14 @@ import Footer from './Footer';
 import { useAuth } from '../context/AuthContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheckCircle, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
-
+import { useNavigate } from 'react-router-dom'; // Add this import at the top
 // Main Home Component
 function Home({ onSignInClick, onLoginSuccess }) {
     const [showLoginSuccessNotification, setShowLoginSuccessNotification] = useState(false);
     const [showLogoutSuccessNotification, setShowLogoutSuccessNotification] = useState(false);
     const [showRestaurants, setShowRestaurants] = useState(false); // State to control restaurant visibility
     const auth = useAuth();
-
+    const navigate = useNavigate();
     // Ref to store the previous login state
     const prevIsLoggedInRef = useRef(auth.isLoggedIn);
     // Ref for the restaurant carousel section
@@ -72,7 +72,7 @@ function Home({ onSignInClick, onLoginSuccess }) {
     // Handler for the "Order Now" button click (defined in Home, called from HeroSection)
     const handleOrderNowClick = () => {
         if (auth.isLoggedIn) {
-            <RestaurantCarousel />
+            navigate('/restaurant'); // Navigate to restaurant page if logged in
         } else {
             onSignInClick(); // Pop up login if not logged in
         }

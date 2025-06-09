@@ -16,7 +16,19 @@ function AdminDashboard() {
         navigate('/admin/manage-restaurants'); // Navigate to the new page
     };
 
+    const handleManageMenuItemsClick = () => {
+        navigate('/admin/manage-menuitems'); // Navigate to the new page
+    };
+
+    const handleManageUserClick = () => {
+        navigate('/admin/manage-user'); // Navigate to the new page
+    };
+
+    const handleManageOrderClick = () => {
+        navigate('/admin/manage-orders'); // Navigate to the new page
+    };
     return (
+        
         <div className="admin-dashboard-container">
             <h1 className="admin-dashboard-title">Admin Dashboard</h1>
             <p className="admin-welcome-message">Welcome, Admin! You are logged in as: <span className="admin-user-email">{auth.userEmail}</span></p>
@@ -26,7 +38,9 @@ function AdminDashboard() {
                 <div className="admin-card">
                     <h2 className="admin-card-title">Manage Users</h2>
                     <p className="admin-card-description">View, add, edit, or delete user accounts.</p>
-                    <button className="admin-card-button users-button">Go to User Management</button>
+                    <button className="admin-card-button users-button"
+                    onClick={handleManageUserClick}
+                    >Go to User Management</button>
                 </div>
                 <div className="admin-card">
                     <h2 className="admin-card-title">Manage Restaurants</h2>
@@ -39,15 +53,28 @@ function AdminDashboard() {
                     </button>
                 </div>
                 <div className="admin-card">
+                    <h2 className="admin-card-title">Manage MenuItems</h2>
+                    <p className="admin-card-description">Add new Menus, update existing ones.</p>
+                    <button
+                        className="admin-card-button restaurants-button"
+                        onClick={handleManageMenuItemsClick}
+                    >
+                        Go to MenuItems Management
+                    </button>
+                </div>
+                <div className="admin-card">
                     <h2 className="admin-card-title">View Orders</h2>
                     <p className="admin-card-description">Monitor all orders and their statuses.</p>
-                    <button className="admin-card-button orders-button">View All Orders</button>
+                    <button className="admin-card-button orders-button" 
+                    onClick={handleManageOrderClick}
+                    >View All Orders</button>
                 </div>
                 <div className="admin-card">
                     <h2 className="admin-card-title">System Settings</h2>
                     <p className="admin-card-description">Configure application-wide settings.</p>
                     <button className="admin-card-button settings-button">Adjust Settings</button>
                 </div>
+                
             </div>
 
             <button

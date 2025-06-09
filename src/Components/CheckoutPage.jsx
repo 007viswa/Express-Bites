@@ -41,6 +41,7 @@ const CheckoutPage = () => {
 
     // API Gateway URL for Order Service
     const ORDER_API_URL = 'http://localhost:1111/order'; // Using /order endpoint
+    const PAYMENT_API_URL = 'http://localhost:1111/payment/process'; // Adjust if needed
 
     useEffect(() => {
         if (location.state && location.state.cartItems) {
@@ -128,6 +129,16 @@ const CheckoutPage = () => {
         return errors;
     };
 
+    // Store order details
+    const cacheOrderDetails = (orderId, orderDetails) => {
+        let cache = {};
+        try {
+            cache = JSON.parse(localStorage.getItem('expressbite_orders_cache')) || {};
+        } catch {}
+        cache[orderId] = orderDetails;
+        localStorage.setItem('expressbite_orders_cache', JSON.stringify(cache));
+    };
+
     const handlePlaceOrder = async () => {
         // 1. Validate Cart and Basic Info
         if (cartItems.length === 0) {
@@ -179,10 +190,11 @@ const CheckoutPage = () => {
         try {
             // --- Backend Payload (Simplified to match current Orders.java) ---
             const orderPayloadForBackend = {
-                userId: 1, // Using a dummy Long value to satisfy backend's Long type
+                userId: auth.userId, // Using a dummy Long value to satisfy backend's Long type
                 restaurantID: cartItems[0]?.restaurantID, // Assuming all items from same restaurant
                 totalAmount: cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-                status: "PENDING" // Default status for new orders
+                status: "PENDING", // Default status for new orders
+                email: auth.userEmail
             };
 
             console.log("--- Sending Simplified Payload to Backend (/order) ---");
@@ -215,8 +227,6 @@ const CheckoutPage = () => {
             const orderId = responseOrder?.orderId;
 
             // --- Store full order details in localStorage for OrderMgmt to access ---
-            const storedOrders = JSON.parse(localStorage.getItem('expressbite_orders_cache') || '[]');
-            
             const detailedOrderForStorage = {
                 orderId: orderId, // Use the ID from the backend
                 userId: auth.userEmail, // Store user's email for identification
@@ -229,14 +239,54 @@ const CheckoutPage = () => {
                 orderItems: cartItems, // Store the actual cart items
                 orderTime: new Date().toISOString()
             };
-            storedOrders.push(detailedOrderForStorage);
-            localStorage.setItem('expressbite_orders_cache', JSON.stringify(storedOrders));
-            console.log("Full order details stored in localStorage:", detailedOrderForStorage);
 
+            cacheOrderDetails(orderId, detailedOrderForStorage);
+            console.log("Full order details stored in localStorage:", detailedOrderForStorage);
 
             console.log("Order placed successfully with ID:", orderId);
             setSuccessMessage("Order Placed Successfully!");
             setCartItems([]); // Clear cart after successful order
+
+            // --- Payment Processing ---
+            const paymentPayload = {
+                orderId: orderId, // from backend order creation response
+                paymentMethod: selectedPaymentMethod,
+                amount: totalOrderValue
+            };
+
+            try {
+                const paymentResponse = await fetch(PAYMENT_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${auth.jwtToken}`
+                    },
+                    body: JSON.stringify(paymentPayload)
+                });
+
+                if (!paymentResponse.ok) {
+                    const errorText = await paymentResponse.text();
+                    let errorMessage = `Payment failed! Status: ${paymentResponse.status}`;
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        errorMessage += ` - ${errorJson.message || errorJson.error || 'Unknown backend error'}`;
+                    } catch (e) {
+                        errorMessage += ` - ${errorText}`;
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const paymentResult = await paymentResponse.json();
+                console.log('Payment processed successfully:', paymentResult);
+
+                // Optionally, update your localStorage cache with payment status if needed:
+                // (You can add payment status to the cached order here)
+
+            } catch (err) {
+                setError(`Payment failed: ${err.message}`);
+                setLoading(false);
+                return; // Stop further processing if payment fails
+            }
 
             // Simulate status change after 30 minutes (1800000 ms)
             // For testing, you can use a shorter duration, e.g., 5000 ms (5 seconds)
@@ -245,10 +295,11 @@ const CheckoutPage = () => {
 
             setTimeout(() => {
                 // Update the status of the order in localStorage to DELIVERED
-                const currentStoredOrders = JSON.parse(localStorage.getItem('expressbite_orders_cache') || '[]');
-                const updatedStoredOrders = currentStoredOrders.map(order => 
-                    order.orderId === orderId ? { ...order, status: "DELIVERED" } : order
-                );
+                const currentStoredOrders = JSON.parse(localStorage.getItem('expressbite_orders_cache') || '{}');
+                const updatedStoredOrders = {
+                    ...currentStoredOrders,
+                    [orderId]: { ...currentStoredOrders[orderId], status: "DELIVERED" }
+                };
                 localStorage.setItem('expressbite_orders_cache', JSON.stringify(updatedStoredOrders));
                 console.log(`--- SIMULATION: Order ID ${orderId || 'Unknown'} status updated to DELIVERED in localStorage ---`);
             }, deliveryTimeMs);

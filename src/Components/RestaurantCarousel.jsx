@@ -5,12 +5,12 @@ import '../RestaurantCarousel.css'; // Your CSS file
 
 // IMPORTANT: Ensure these paths are correct relative to THIS RestaurantCarousel.jsx file
 // For example, if RestaurantCarousel.jsx is in src/Components, then ../../public goes to src/public
-import res1 from '../../public/kfc.jpg'; // Import your local images
-import res2 from '../../public/res2.jpg';
-import res3 from '../../public/res3.jpg';
-import res4 from '../../public/res4.jpg';
-import res5 from '../../public/res5.jpg';
-import res6 from '../../public/res6.jpg';
+import res1 from '/kfc.jpg'; // Import your local images
+import res2 from '/res2.jpg';
+import res3 from '/res3.jpg';
+import res4 from '/res4.jpg';
+import res5 from '/res5.jpg';
+import res6 from '/res6.jpg';
 
 import { useAuth } from '../context/AuthContext';
 

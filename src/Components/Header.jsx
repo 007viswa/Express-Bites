@@ -5,12 +5,13 @@ import pacmanWhiteLogo from '../logos/pacman-white.png';
 import { useAuth } from '../context/AuthContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'; // Import FontAwesomeIcon
 import { faUser } from '@fortawesome/free-solid-svg-icons'; // Import the user icon
+import { useNavigate } from 'react-router-dom'; // Import useNavigate for navigation
 
 function Header({ onSignInClick }) {
     const auth = useAuth();
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const location = useLocation(); // Get the current URL path
-
+    const navigate = useNavigate(); 
     const handleProfileClick = () => {
         setShowProfileMenu(prev => !prev);
     };
@@ -18,6 +19,8 @@ function Header({ onSignInClick }) {
     const handleLogoutClick = () => {
         auth.logout();
         setShowProfileMenu(false);
+        navigate('/'); 
+        // Redirect to home after logout
     };
 
     // Close profile menu if clicking outside
@@ -87,7 +90,7 @@ function Header({ onSignInClick }) {
                                                     </>
                                                 )}
                                                 {auth.userRole && auth.userRole.includes('ADMIN') && (
-                                                    <li><Link to="/admin-dashboard">Admin Dashboard</Link></li>
+                                                    <li><Link to="/admin">Admin Dashboard</Link></li>
                                                 )}
                                                 {auth.userRole && auth.userRole.includes('ROLE_DELIVERY') && (
                                                     <li><Link to="/delivery-dashboard">Delivery Dashboard</Link></li>

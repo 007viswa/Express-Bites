@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../ManageRestaurants.css'; // New CSS file for this component
@@ -6,7 +6,7 @@ import '../ManageRestaurants.css'; // New CSS file for this component
 function ManageRestaurants() {
     const navigate = useNavigate();
     const auth = useAuth();
-
+    
     const [restaurant, setRestaurant] = useState({
         name: '',
         address: '',
@@ -18,8 +18,32 @@ function ManageRestaurants() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null); // For success or error messages
     const [messageType, setMessageType] = useState(''); // 'success' or 'error'
+    const [restaurants, setRestaurants] = useState([]);
+    const [editingId, setEditingId] = useState(null);
 
     const API_BASE_URL = 'http://localhost:1111/restaurant'; // Assuming your Restaurant Service base URL
+
+    useEffect(() => {
+        fetchRestaurants();
+    }, []);
+
+    const fetchRestaurants = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/viewAllRestaurant`, {
+                headers: {
+                    'Authorization': `Bearer ${auth.jwtToken}`
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setRestaurants(data);
+            }
+        } catch (error) {
+            console.error('Error fetching restaurants:', error);
+            setMessage('Failed to load restaurants');
+            setMessageType('error');
+        }
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -78,6 +102,7 @@ function ManageRestaurants() {
                 email: ''
             });
             console.log('New restaurant added:', newRestaurant);
+            fetchRestaurants();
 
         } catch (err) {
             console.error('Error adding restaurant:', err);
@@ -88,9 +113,68 @@ function ManageRestaurants() {
         }
     };
 
+    const handleUpdate = async (id) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/updateRestaurant/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${auth.jwtToken}`
+                },
+                body: JSON.stringify(restaurant)
+            });
+
+            if (!response.ok) throw new Error('Failed to update restaurant');
+            
+            setMessage('Restaurant updated successfully');
+            setMessageType('success');
+            setEditingId(null);
+            // Clear form after successful update
+            setRestaurant({
+                name: '',
+                address: '',
+                phoneNumber: '',
+                email: ''
+            });
+            fetchRestaurants();
+            
+        } catch (error) {
+            setMessage(error.message);
+            setMessageType('error');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (window.confirm('Are you sure you want to delete this restaurant?')) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/deleteRestaurant/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${auth.jwtToken}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to delete restaurant');
+                
+                setMessage('Restaurant deleted successfully');
+                setMessageType('success');
+                fetchRestaurants();
+                
+            } catch (error) {
+                setMessage(error.message);
+                setMessageType('error');
+            }
+        }
+    };
+
+    const handleEdit = (restaurant) => {
+        setEditingId(restaurant.restaurantId);
+        setRestaurant(restaurant);
+    };
+
     return (
         <div className="manage-restaurants-container">
-            <h1 className="page-title">Add New Restaurant</h1>
+            <h1 className="page-title">{editingId ? 'Update Restaurant' : 'Add New Restaurant'}</h1>
 
             {message && (
                 <div className={`notification-message ${messageType}`}>
@@ -98,7 +182,10 @@ function ManageRestaurants() {
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="restaurant-form">
+            <form onSubmit={editingId ? (e) => {
+                e.preventDefault();
+                handleUpdate(editingId);
+            } : handleSubmit} className="restaurant-form">
                 <div className="form-group">
                     <label htmlFor="name">Restaurant Name:</label>
                     <input
@@ -148,13 +235,63 @@ function ManageRestaurants() {
 
                 <div className="form-actions">
                     <button type="submit" className="submit-button" disabled={loading}>
-                        {loading ? 'Adding...' : 'Add Restaurant'}
+                        {loading ? 'Processing...' : editingId ? 'Update Restaurant' : 'Add Restaurant'}
                     </button>
+                    {editingId && (
+                        <button type="button" className="cancel-button" onClick={() => {
+                            setEditingId(null);
+                            setRestaurant({
+                                name: '',
+                                address: '',
+                                phoneNumber: '',
+                                email: ''
+                            });
+                        }}>
+                            Cancel Edit
+                        </button>
+                    )}
                     <button type="button" className="back-button" onClick={() => navigate('/admin')}>
                         Back to Dashboard
                     </button>
                 </div>
             </form>
+
+            <h2 className="page-title">Manage Restaurants</h2>
+            <table className="restaurants-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Address</th>
+                        <th>Phone Number</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {restaurants.map((rest) => (
+                        <tr key={rest.restaurantId}>
+                            <td>{rest.name}</td>
+                            <td>{rest.address}</td>
+                            <td>{rest.phoneNumber}</td>
+                            <td>{rest.email}</td>
+                            <td>
+                                <button 
+                                    onClick={() => handleEdit(rest)}
+                                    className="edit-button"
+                                >
+                                    Edit
+                                </button>
+                                <button 
+                                    onClick={() => handleDelete(rest.restaurantId)}
+                                    className="delete-button"
+                                >
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
     );
 }
