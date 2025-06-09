@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../OrderMgmt.css';
 import { useAuth } from '../context/AuthContext';
 import Footer from './Footer';
-import OrderDetailModal from './OrderDetailModal'; // New component for detailed view
+import OrderDetailModal from './OrderDetailModal';
 
 const OrderMgmt = () => {
     const ORDER_API_BASE_URL = 'http://localhost:1111/order';
@@ -11,28 +12,51 @@ const OrderMgmt = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState('current');
-    const [filterStatus, setFilterStatus] = useState('All');
+    const [activeTab, setActiveTab] = useState('current'); // 'current' or 'past'
+    // Simplified filterStatus options: only PENDING and DELIVERED
+    const [filterStatus, setFilterStatus] = useState('All'); // 'All', 'PENDING', 'DELIVERED'
 
-    const [selectedOrderDetails, setSelectedOrderDetails] = useState(null); // State to hold details for the modal
-    const [isModalOpen, setIsModalOpen] = useState(false); // State to control modal visibility
+    const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const auth = useAuth();
+    const navigate = useNavigate();
+
+    // Handlers for modal and navigation
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedOrderDetails(null);
+    };
+
+    const handleOrderCardClick = (order) => {
+        setSelectedOrderDetails(order);
+        setIsModalOpen(true);
+    };
+
+    const handleTrackOrder = (order) => {
+        if (order.deliveryId && order.agentId && order.orderId) {
+            navigate('/delivery-tracking', {
+                state: {
+                    orderId: order.orderId,
+                    deliveryId: order.deliveryId,
+                    agentId: order.agentId,
+                }
+            });
+        } else {
+            console.warn("Cannot track order: Missing deliveryId or agentId for order ID:", order.orderId);
+            setError("Tracking information is not yet available for this order.");
+        }
+    };
 
     useEffect(() => {
         console.log(`Frontend connecting to backend at: ${ORDER_API_BASE_URL}`);
     }, []);
 
+    // Effect to fetch orders whenever tab, filter, or auth state changes
     useEffect(() => {
         if (!auth.isLoading) {
             if (auth.isLoggedIn && auth.jwtToken) {
-                let statusToFilter = filterStatus;
-                if (activeTab === 'current' && filterStatus === 'All') {
-                    statusToFilter = 'PENDING';
-                } else if (activeTab === 'past' && filterStatus === 'All') {
-                    statusToFilter = 'DELIVERED';
-                }
-                fetchAllOrders(statusToFilter);
+                fetchAllOrders(activeTab, filterStatus);
             } else {
                 setOrders([]);
                 setError("You must be logged in to view your orders.");
@@ -41,34 +65,43 @@ const OrderMgmt = () => {
         }
     }, [activeTab, filterStatus, auth.isLoggedIn, auth.isLoading, auth.jwtToken]);
 
-    const fetchAllOrders = async (status) => {
+    const fetchAllOrders = async (currentTab, currentFilterStatus) => {
         setLoading(true);
         setError(null);
 
-        // Get userEmail and role from auth context or localStorage
         const userEmail = auth.userEmail;
         const userRole = auth.userRole;
         
-        // Construct URL based on user role and filters
-        let url = `${ORDER_API_BASE_URL}/list`;
+        let queryParams = [];
+        let statusesToRequest = [];
 
-        // Add query parameters based on role and status
-        if (userRole === 'ADMIN') {
-            // Admin can see all orders or filter by status
-            if (status && status !== 'All') {
-                url = `${ORDER_API_BASE_URL}/list?status=${status}`;
-            }
+        if (currentFilterStatus !== 'All') {
+            statusesToRequest.push(currentFilterStatus);
         } else {
-            // Regular users see their orders filtered by email and optionally by status
-            if (status && status !== 'All') {
-                url = `${ORDER_API_BASE_URL}/list?status=${status}&email=${userEmail}`;
-            } else {
-                url = `${ORDER_API_BASE_URL}/list?email=${userEmail}`;
+            // Simplified status logic for tabs: PENDING for current, DELIVERED for past
+            if (currentTab === 'current') {
+                statusesToRequest = ['PENDING']; // Only PENDING for current
+            } else if (currentTab === 'past') {
+                statusesToRequest = ['DELIVERED']; // Only DELIVERED for past
             }
         }
 
-        console.log(`Fetching orders from: ${url}`);
-        console.log(`Using JWT Token: ${auth.jwtToken ? auth.jwtToken.substring(0, 30) + '...' : 'No Token'}`);
+        if (statusesToRequest.length > 0) {
+            queryParams.push(`statuses=${statusesToRequest.join(',')}`);
+        }
+
+        if (userRole !== 'ADMIN' && userEmail) {
+            queryParams.push(`email=${userEmail}`);
+        }
+
+        let url = `${ORDER_API_BASE_URL}/list`;
+        if (queryParams.length > 0) {
+            url += `?${queryParams.join('&')}`;
+        }
+        
+        console.log(`FETCHING ORDERS - URL: ${url}`);
+        console.log(`FETCHING ORDERS - Requesting Statuses: ${statusesToRequest.join(', ')}`);
+        console.log(`FETCHING ORDERS - Using JWT Token: ${auth.jwtToken ? auth.jwtToken.substring(0, 30) + '...' : 'No Token'}`);
 
         try {
             const response = await fetch(url, {
@@ -94,26 +127,27 @@ const OrderMgmt = () => {
             let backendOrders = await response.json();
             console.log('Successfully fetched raw backend orders:', backendOrders);
 
-            // Load detailed orders from localStorage (cache)
-            let cachedOrders = {};
+            let cachedOrdersMap = {};
             try {
-                cachedOrders = JSON.parse(localStorage.getItem('expressbite_orders_cache')) || {};
-            } catch { cachedOrders = {}; }
+                cachedOrdersMap = JSON.parse(localStorage.getItem('expressbite_orders_map') || '{}');
+            } catch (e) {
+                console.error("Error parsing expressbite_orders_map from localStorage:", e);
+                cachedOrdersMap = {};
+            }
+            console.log('Cached orders map from localStorage:', cachedOrdersMap);
 
-            // Merge backend orders with cached details
             const ordersToDisplay = await Promise.all(backendOrders.map(async (backendOrder) => {
-                const cachedDetail = cachedOrders[backendOrder.orderId];
+                const cachedDetail = cachedOrdersMap[backendOrder.orderId];
                 let orderDisplay = { ...backendOrder };
 
                 if (cachedDetail) {
                     orderDisplay = {
                         ...orderDisplay,
-                        ...cachedDetail, // This merges deliveryDetails, orderItems, paymentMethod, etc.
-                        status: backendOrder.status // Always use backend status
+                        ...cachedDetail,
+                        status: backendOrder.status
                     };
                 }
 
-                // Fetch restaurant name if needed (as before)
                 if (orderDisplay.restaurantID && !orderDisplay.restaurantName) {
                     try {
                         const restaurantResponse = await fetch(`${RESTAURANT_API_BASE_URL}/viewRestaurantById/${orderDisplay.restaurantID}`, {
@@ -129,7 +163,8 @@ const OrderMgmt = () => {
                         } else {
                             orderDisplay.restaurantName = `ID: ${orderDisplay.restaurantID}`;
                         }
-                    } catch {
+                    } catch (e) {
+                        console.error(`Error fetching restaurant for ID ${orderDisplay.restaurantID}:`, e);
                         orderDisplay.restaurantName = `ID: ${orderDisplay.restaurantID}`;
                     }
                 } else if (!orderDisplay.restaurantID) {
@@ -138,6 +173,8 @@ const OrderMgmt = () => {
 
                 return orderDisplay;
             }));
+
+            ordersToDisplay.sort((a, b) => b.orderId - a.orderId);
 
             setOrders(ordersToDisplay);
         } catch (err) {
@@ -149,30 +186,26 @@ const OrderMgmt = () => {
                 `3. **Backend Restart**: Remember to restart your backend services after *any* code changes. \n` +
                 `4. **Authentication**: Ensure you are logged in. \n` +
                 `5. **Network/Firewall**: Temporarily disable any local firewalls or antivirus that might block ports. \n` +
-                `6. **Database Data**: Ensure your backend database contains order and restaurant data.`
+                `6. **Backend /order/list endpoint**: MOST IMPORTANTLY, ensure your backend's \`/order/list\` endpoint correctly filters orders by the \`statuses\` query parameter (e.g., \`/list?statuses=PENDING\`).`
             );
         } finally {
             setLoading(false);
         }
     };
 
-    const cacheOrderDetails = (orderId, orderDetails) => {
-        let cache = {};
-        try {
-            cache = JSON.parse(localStorage.getItem('expressbite_orders_cache')) || {};
-        } catch {}
-        cache[orderId] = orderDetails;
-        localStorage.setItem('expressbite_orders_cache', JSON.stringify(cache));
+    const getStatusStyles = (status) => {
+        // Only handle PENDING and DELIVERED for styling
+        switch (status?.toLowerCase()) {
+            case 'pending': return 'status-pending';
+            case 'delivered': return 'status-delivered';
+            default: return 'status-unknown'; // For any other unexpected statuses
+        }
     };
 
-    const handleOrderCardClick = (order) => {
-        setSelectedOrderDetails(order);
-        setIsModalOpen(true);
-    };
-
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setSelectedOrderDetails(null);
+    // Determine if the "Track Order" button should be shown (only for PENDING orders with tracking info)
+    const shouldShowTrackButton = (order) => {
+        const lowerCaseStatus = order.status?.toLowerCase();
+        return (lowerCaseStatus === 'pending') && order.deliveryId && order.agentId;
     };
 
     return (
@@ -189,7 +222,7 @@ const OrderMgmt = () => {
                             className={`order-tab-button ${activeTab === 'current' ? 'active' : ''}`}
                             onClick={() => {
                                 setActiveTab('current');
-                                setFilterStatus('All');
+                                setFilterStatus('All'); // Reset filter when switching tabs
                             }}
                         >
                             Current Orders
@@ -198,7 +231,7 @@ const OrderMgmt = () => {
                             className={`order-tab-button ${activeTab === 'past' ? 'active' : ''}`}
                             onClick={() => {
                                 setActiveTab('past');
-                                setFilterStatus('All');
+                                setFilterStatus('All'); // Reset filter when switching tabs
                             }}
                         >
                             Past Orders
@@ -214,7 +247,7 @@ const OrderMgmt = () => {
                             <option value="All">All</option>
                             <option value="PENDING">Pending</option>
                             <option value="DELIVERED">Delivered</option>
-                            <option value="CANCELLED">Cancelled</option>
+                            {/* Removed IN_PROGRESS and CANCELLED from dropdown */}
                         </select>
                         <div className="dropdown-arrow">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -255,12 +288,27 @@ const OrderMgmt = () => {
                             <div key={order.orderId} className="order-card" onClick={() => handleOrderCardClick(order)}>
                                 <div className="order-card-header">
                                     <h3 className="order-id">Order ID: {order.orderId}</h3>
-                                    <span className={`order-status status-${order.status ? order.status.toLowerCase() : 'unknown'}`}>
+                                    <span className={`order-status ${getStatusStyles(order.status)}`}>
                                         {order.status}
                                     </span>
                                 </div>
                                 <p className="order-restaurant-name">Restaurant: <span>{order.restaurantName || 'Loading...'}</span></p>
                                 <p className="order-total-amount">Total Amount: <span>₹{order.totalAmount?.toFixed(2)}</span></p>
+                                <p className="order-date">Order Time: <span>{order.orderTime ? new Date(order.orderTime).toLocaleString() : 'N/A'}</span></p>
+                                
+                                {shouldShowTrackButton(order) && (
+                                    <div className="order-card-actions">
+                                        <button
+                                            className="track-order-button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleTrackOrder(order);
+                                            }}
+                                        >
+                                            Track Order
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         ))
                     )}

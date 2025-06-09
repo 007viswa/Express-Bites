@@ -17,7 +17,7 @@ import Profile from './Components/Profile';
 import ManageRestaurants from './Components/ManageRestaurants'; // Import ManageRestaurants
 import ManageMenuItems from './Components/ManageMenuItems'; 
 import ManageUsers from './Components/ManageUsers';// Import ManageMenuItems
-
+import DeliveryTrackingPage from './Components/DeliveryTrackingPage'; // <-- NEW IMPORT
 
 const PrivateRoute = ({ children, roles }) => {
     const auth = useAuth(); // Ensure useAuth is accessible here
@@ -25,7 +25,7 @@ const PrivateRoute = ({ children, roles }) => {
         return <div>Loading authentication...</div>; // Or a spinner/loader
     }
     if (!auth.isLoggedIn) {
-        return <Navigate to="/" replace />; // Redirect to login if not authenticated
+        return <Navigate to="/" replace />; // Redirect to home/login if not authenticated
     }
     // Check roles if specified
     if (roles && auth.userRole && !roles.includes(auth.userRole)) {
@@ -76,7 +76,7 @@ function App() {
             {/* ALL routes go inside the <Routes> component */}
             <Routes>
                 <Route path="/" element={<Home onSignInClick={handleSignInClick} onLoginSuccess={handleLoginSuccess} />} />
-                <Route path="/home" element={<Home />} />
+                <Route path="/home" element={<Home />} /> {/* Duplicate route for /home, consider if needed */}
                 <Route path="/about-us" element={<AboutUs onSignInClick={handleSignInClick} />} />
                 <Route path="/partner-with-us" element={<PartnerWithUs onSignInClick={handleSignInClick} />} />
                 <Route path="/how-it-works" element={<HowItWorks onSignInClick={handleSignInClick} />} />
@@ -86,17 +86,21 @@ function App() {
                 <Route path="/profile-settings" element={<PrivateRoute><Profile /></PrivateRoute>} />
                 <Route path="/checkout" element={<PrivateRoute><CheckoutPage /></PrivateRoute>} />
                 
+                {/* New Delivery Tracking Page - Protected as it needs order info */}
+                <Route path="/delivery-tracking" element={<PrivateRoute><DeliveryTrackingPage /></PrivateRoute>} /> {/* <-- NEW ROUTE */}
+
                 {/* Public restaurant menu (no login required to view a menu) */}
-                <Route path="/restaurant" element={<PrivateRoute><RestaurantCarousel /></PrivateRoute>} />
+                <Route path="/restaurant" element={<PrivateRoute><RestaurantCarousel /></PrivateRoute>} /> {/* Protecting RestaurantCarousel here */}
                 <Route path="/restaurant/:restaurantId/menu" element={<MenuPage />} />
 
                 {/* Admin Protected Routes */}
                 {/* Make sure 'ADMIN' matches the exact role string from your backend */}
                 <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-                <Route path="/admin/manage-user" element={<AdminRoute allowedRoles={['ADMIN']}><ManageUsers /></AdminRoute>} />
+                <Route path="/admin/manage-user" element={<AdminRoute><ManageUsers /></AdminRoute>} /> {/* Removed allowedRoles here as AdminRoute already handles it */}
                 <Route path="/admin/manage-orders" element={<AdminRoute><OrderMgmt /></AdminRoute>} />
                 <Route path="/admin/manage-restaurants" element={<AdminRoute><ManageRestaurants /></AdminRoute>} />
                 <Route path="/admin/manage-menuitems" element={<AdminRoute><ManageMenuItems /></AdminRoute>} />
+                
                 {/* Public Unauthorized page */}
                 <Route path="/unauthorized" element={<Unauthorized />} />
                 

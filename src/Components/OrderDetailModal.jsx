@@ -1,66 +1,129 @@
 import React from 'react';
-import '../OrderMgmt.css'; // Use the same CSS for modal styling
+import { useNavigate } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTimes, faMotorcycle, faUtensils, faMapMarkerAlt, faCreditCard, faClock, faUser } from '@fortawesome/free-solid-svg-icons';
+import '../OrderDetailModal.css'; // CORRECT: Import its OWN CSS file for modal styling
 
 const OrderDetailModal = ({ order, onClose }) => {
-  if (!order) {
-    return null;
-  }
+    const navigate = useNavigate();
 
-  // Helper to format delivery details into a readable string
-  const formatAddress = (details) => {
-    if (!details) return "N/A";
-    const { firstName, lastName, street, city, state, zipCode, country, phone, email } = details;
+    if (!order) {
+        return null;
+    }
+
+    const handleTrackDeliveryClick = () => {
+        onClose(); // Close the modal
+        navigate('/delivery-tracking', {
+            state: {
+                orderId: order.orderId,
+                deliveryId: order.deliveryId,
+                agentId: order.agentId,
+            }
+        });
+    };
+
+    const formatAddress = (details) => {
+        if (!details) return "N/A";
+        return (
+            <>
+                <p><strong>Name:</strong> {details.firstName || ''} {details.lastName || ''}</p>
+                <p><strong>Address:</strong> {details.street || ''}, {details.city || ''}, {details.state || ''} - {details.zipCode || ''}, {details.country || ''}</p>
+                <p><strong>Phone:</strong> {details.phone || 'N/A'}</p>
+                <p><strong>Email:</strong> {details.email || 'N/A'}</p>
+            </>
+        );
+    };
+
+    const getStatusClassName = (status) => {
+        // Only handle PENDING and DELIVERED for styling in the modal
+        switch (status?.toLowerCase()) {
+            case 'pending': return 'status-pending';
+            case 'delivered': return 'status-delivered';
+            default: return 'status-unknown'; // For any other unexpected statuses
+        }
+    };
+
+    // Determine if the "Track Order" button should be shown (only for PENDING orders with tracking info)
+    const shouldShowTrackButtonInModal = (order) => {
+        const lowerCaseStatus = order.status?.toLowerCase();
+        return (lowerCaseStatus === 'pending') && order.deliveryId && order.agentId;
+    };
+
+
     return (
-      <>
-        <p><strong>Name:</strong> {firstName} {lastName}</p>
-        <p><strong>Address:</strong> {street}, {city}, {state} - {zipCode}, {country}</p>
-        <p><strong>Phone:</strong> {phone}</p>
-        <p><strong>Email:</strong> {email}</p>
-      </>
+        <div className="modal-overlay">
+            <div className="modal-content">
+                <button className="close-button" onClick={onClose}>
+                    <FontAwesomeIcon icon={faTimes} />
+                </button>
+                <h2 className="modal-title">Order Details</h2>
+
+                <div className="order-summary-header">
+                    <p className="order-modal-id">Order ID: <span>#{order.orderId}</span></p>
+                    <span className={`order-modal-status ${getStatusClassName(order.status)}`}>
+                        {order.status}
+                    </span>
+                </div>
+
+                <div className="order-details-sections">
+                    <div className="detail-section">
+                        <h3><FontAwesomeIcon icon={faUtensils} /> Restaurant Info</h3>
+                        <p><strong>Name:</strong> {order.restaurantName || 'Unknown'}</p>
+                        <p><strong>ID:</strong> {order.restaurantID}</p>
+                    </div>
+
+                    <div className="detail-section">
+                        <h3><FontAwesomeIcon icon={faUser} /> Customer & Delivery</h3>
+                        {formatAddress(order.deliveryDetails)}
+                        {order.paymentMethod && <p><strong>Payment Method:</strong> {order.paymentMethod}</p>}
+                        <p><strong>Order Time:</strong> {order.orderTime ? new Date(order.orderTime).toLocaleString() : 'N/A'}</p>
+                    </div>
+
+                    <div className="detail-section order-items-list">
+                        <h3><FontAwesomeIcon icon={faUtensils} /> Ordered Items</h3>
+                        {order.orderItems && order.orderItems.length > 0 ? (
+                            <ul>
+                                {order.orderItems.map((item, index) => (
+                                    <li key={index}>
+                                        <span>{item.name} x {item.quantity}</span>
+                                        <span>₹{(item.price * item.quantity)?.toFixed(2)}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p>No item details available.</p>
+                        )}
+                        <p className="total-amount-modal"><strong>Total:</strong> ₹{order.totalAmount?.toFixed(2)}</p>
+                    </div>
+
+                    {/* Delivery Agent Information - Conditionally Displayed */}
+                    <div className="detail-section delivery-agent-info">
+                        <h3><FontAwesomeIcon icon={faMotorcycle} /> Delivery Status</h3>
+                        {order.deliveryId ? (
+                            <>
+                                <p><strong>Delivery ID:</strong> {order.deliveryId}</p>
+                                <p><strong>Agent ID:</strong> {order.agentId || 'Not assigned yet'}</p>
+                                {shouldShowTrackButtonInModal(order) ? (
+                                    <button className="track-delivery-button" onClick={handleTrackDeliveryClick}>
+                                        <FontAwesomeIcon icon={faMapMarkerAlt} /> Track Delivery
+                                    </button>
+                                ) : (
+                                    // Simplified message logic
+                                    order.status === 'DELIVERED' ? (
+                                        <p className="delivered-message">Order has been successfully delivered!</p>
+                                    ) : (
+                                        <p>Awaiting assignment or further status updates.</p>
+                                    )
+                                )}
+                            </>
+                        ) : (
+                            <p>Delivery details not yet available (Order not assigned to agent).</p>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
     );
-  };
-
-  return (
-    <div className="order-modal-overlay" onClick={onClose}>
-      <div className="order-modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="order-modal-header">
-          <h2 className="order-modal-title">Order Details: {order.orderId}</h2>
-          <button className="close-modal-button" onClick={onClose}>
-            &times;
-          </button>
-        </div>
-        <div className="order-modal-body">
-          <p><strong>Restaurant:</strong> {order.restaurantName || `ID: ${order.restaurantID}`}</p>
-          <p><strong>Total Amount:</strong> ₹{order.totalAmount?.toFixed(2)}</p>
-          <p><strong>Status:</strong> <span className={`order-status status-${order.status ? order.status.toLowerCase() : 'unknown'}`}>{order.status}</span></p>
-          <p><strong>Payment Method:</strong> {order.paymentMethod || 'N/A'}</p>
-          <p><strong>Order Time:</strong> {order.orderTime ? new Date(order.orderTime).toLocaleString() : 'N/A'}</p>
-
-          <h3 className="modal-section-title">Delivery Information</h3>
-          <div className="delivery-info-section">
-            {formatAddress(order.deliveryDetails)}
-          </div>
-
-          <h3 className="modal-section-title">Items Ordered</h3>
-          {order.orderItems && order.orderItems.length > 0 ? (
-            <ul className="ordered-items-list">
-              {order.orderItems.map((item, index) => (
-                <li key={index} className="ordered-item">
-                  <span>{item.name} x {item.quantity}</span>
-                  <span>₹{(item.price * item.quantity)?.toFixed(2)}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="no-items-message">No detailed item list available (may not be cached).</p>
-          )}
-        </div>
-        <div className="order-modal-footer">
-          <button className="close-modal-button-footer" onClick={onClose}>Close</button>
-        </div>
-      </div>
-    </div>
-  );
 };
 
 export default OrderDetailModal;

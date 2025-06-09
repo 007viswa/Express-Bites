@@ -19,7 +19,7 @@ const CheckoutPage = () => {
     const [deliveryInfo, setDeliveryInfo] = useState({
         firstName: "",
         lastName: "",
-        email: "",
+        email: "", // Ensure email is part of deliveryInfo
         street: "",
         city: "",
         state: "",
@@ -28,7 +28,7 @@ const CheckoutPage = () => {
         phone: ""
     });
 
-    // Form validation state for delivery details (temporarily unused for validation checks)
+    // Form validation state for delivery details
     const [formErrors, setFormErrors] = useState({});
 
     // Payment Option State
@@ -39,19 +39,19 @@ const CheckoutPage = () => {
     // Card Details Validation Errors
     const [cardErrors, setCardErrors] = useState({});
 
-    // API Gateway URL for Order Service
-    const ORDER_API_URL = 'http://localhost:1111/order'; // Using /order endpoint
-    const PAYMENT_API_URL = 'http://localhost:1111/payment/process'; // Adjust if needed
+    // API Gateway URLs
+    const ORDER_API_URL = 'http://localhost:1111/order'; // Your Order Service endpoint
+    const DELIVERY_API_URL = 'http://localhost:1111/delivery'; // Your Delivery Service endpoint
 
     useEffect(() => {
         if (location.state && location.state.cartItems) {
             setCartItems(location.state.cartItems);
             setLoading(false);
-            // Pre-fill email from auth context, but phone remains blank
+            // Pre-fill email from auth context
             if (auth.isLoggedIn && auth.userEmail) {
                 setDeliveryInfo(prevInfo => ({
                     ...prevInfo,
-                    email: auth.userEmail
+                    email: auth.userEmail // Pre-fill email from auth context
                 }));
             }
         } else {
@@ -63,8 +63,7 @@ const CheckoutPage = () => {
     // Handler for delivery info input changes
     const handleDeliveryInfoChange = (event) => {
         setDeliveryInfo({ ...deliveryInfo, [event.target.name]: event.target.value });
-        // No validation triggered on change for now
-        // setFormErrors(prevErrors => ({ ...prevErrors, [event.target.name]: "" }));
+        setFormErrors(prevErrors => ({ ...prevErrors, [event.target.name]: "" })); // Clear error on change
     };
 
     // Handler for card details input changes
@@ -73,12 +72,14 @@ const CheckoutPage = () => {
         setCardErrors(prevErrors => ({ ...prevErrors, [event.target.name]: "" })); // Clear error on change
     };
 
-    // Delivery Form Validation (TEMPORARILY NOT CALLED IN handlePlaceOrder)
+    // Delivery Form Validation
     const validateDeliveryForm = () => {
         const errors = {};
         if (!deliveryInfo.firstName.trim()) errors.firstName = "First name is required.";
         if (!deliveryInfo.lastName.trim()) errors.lastName = "Last name is required.";
-        if (deliveryInfo.email.trim() && !/\S+@\S+\.\S+/.test(deliveryInfo.email)) {
+        if (!deliveryInfo.email.trim()) {
+             errors.email = "Email address is required.";
+        } else if (!/\S+@\S+\.\S+/.test(deliveryInfo.email)) {
             errors.email = "Email address is invalid.";
         }
         if (!deliveryInfo.street.trim()) errors.street = "Street is required.";
@@ -94,7 +95,7 @@ const CheckoutPage = () => {
         return errors;
     };
 
-    // Card Details Validation (still called if card selected)
+    // Card Details Validation
     const validateCardDetails = () => {
         const errors = {};
         const { cardNumber, expiryDate, cvv } = cardDetails;
@@ -129,16 +130,6 @@ const CheckoutPage = () => {
         return errors;
     };
 
-    // Store order details
-    const cacheOrderDetails = (orderId, orderDetails) => {
-        let cache = {};
-        try {
-            cache = JSON.parse(localStorage.getItem('expressbite_orders_cache')) || {};
-        } catch {}
-        cache[orderId] = orderDetails;
-        localStorage.setItem('expressbite_orders_cache', JSON.stringify(cache));
-    };
-
     const handlePlaceOrder = async () => {
         // 1. Validate Cart and Basic Info
         if (cartItems.length === 0) {
@@ -165,43 +156,37 @@ const CheckoutPage = () => {
                 return;
             }
         }
+        // 4. Validate Delivery Form
+        const currentDeliveryErrors = validateDeliveryForm();
+        if (Object.keys(currentDeliveryErrors).length > 0) {
+            setFormErrors(currentDeliveryErrors);
+            setError("Please fill in all required delivery details correctly.");
+            return;
+        }
 
-        // All validations passed, proceed with order placement
+
         setLoading(true);
         setError(null); // Clear previous errors
         setSuccessMessage(null); // Clear previous success messages
 
-        // --- Frontend Logging of FULL Order Details (including "ignored" details) ---
-        const fullOrderDetailsForLogging = {
-            restaurantId: cartItems[0]?.restaurantID,
-            itemsInCart: cartItems, // Full cart items with quantity, etc.
-            deliveryDetails: deliveryInfo, // All delivery details
-            paymentMethodSelected: selectedPaymentMethod,
-            cardDetailsProvided: selectedPaymentMethod === "Credit/Debit Card" ? cardDetails : null,
-            totalAmount: cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-            userId: auth.userEmail, // Using email as userId for now
-            timestamp: new Date().toISOString()
-        };
-        console.log("--- Frontend Proposed Order Details (Full Payload) ---");
-        console.log(JSON.stringify(fullOrderDetailsForLogging, null, 2));
-        console.log("-----------------------------------------------------");
-
+        let createdOrderId = null;
+        let assignedDelivery = null;
 
         try {
-            // --- Backend Payload (Simplified to match current Orders.java) ---
+            // --- Step 1: Place the Order via Order Service ---
             const orderPayloadForBackend = {
-                userId: auth.userId, // Using a dummy Long value to satisfy backend's Long type
+                userId: 1, // IMPORTANT: Adjust this if your AuthContext provides a real numeric userId (e.g., auth.userId)
                 restaurantID: cartItems[0]?.restaurantID, // Assuming all items from same restaurant
                 totalAmount: cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
                 status: "PENDING", // Default status for new orders
-                email: auth.userEmail
+                email: deliveryInfo.email // Sending email as required by backend error
             };
 
-            console.log("--- Sending Simplified Payload to Backend (/order) ---");
+            console.log("--- Sending Order Payload to Backend (/order) ---");
             console.log(JSON.stringify(orderPayloadForBackend, null, 2));
             console.log("-----------------------------------------------------");
 
-            const response = await fetch(`${ORDER_API_URL}`, { // Changed to POST /order (takes Orders model)
+            const orderResponse = await fetch(`${ORDER_API_URL}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -210,113 +195,134 @@ const CheckoutPage = () => {
                 body: JSON.stringify(orderPayloadForBackend)
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Raw backend response on error:', errorText);
-                let errorMessage = `HTTP error! Status: ${response.status}`;
-                try {
-                    const errorJson = JSON.parse(errorText);
-                    errorMessage += ` - ${errorJson.message || errorJson.error || 'Unknown backend error'}`;
-                } catch (e) {
-                    errorMessage += ` - ${errorText}`;
-                }
-                throw new Error(errorMessage);
+            if (!orderResponse.ok) {
+                const errorText = await orderResponse.text();
+                console.error('Raw backend order response on error:', errorText);
+                throw new Error(`Order placement failed: ${orderResponse.status} - ${errorText}`);
             }
 
-            const responseOrder = await response.json();
-            const orderId = responseOrder?.orderId;
+            const responseOrder = await orderResponse.json();
+            createdOrderId = responseOrder?.orderId;
+            console.log("Order placed successfully with ID:", createdOrderId);
 
-            // --- Store full order details in localStorage for OrderMgmt to access ---
-            const detailedOrderForStorage = {
-                orderId: orderId, // Use the ID from the backend
-                userId: auth.userEmail, // Store user's email for identification
-                restaurantID: cartItems[0]?.restaurantID,
-                restaurantName: null, // Will fetch this in OrderMgmt
-                totalAmount: totalOrderValue,
-                status: "PENDING",
-                deliveryDetails: deliveryInfo,
-                paymentMethod: selectedPaymentMethod,
-                orderItems: cartItems, // Store the actual cart items
-                orderTime: new Date().toISOString()
-            };
-
-            cacheOrderDetails(orderId, detailedOrderForStorage);
-            console.log("Full order details stored in localStorage:", detailedOrderForStorage);
-
-            console.log("Order placed successfully with ID:", orderId);
-            setSuccessMessage("Order Placed Successfully!");
-            setCartItems([]); // Clear cart after successful order
-
-            // --- Payment Processing ---
-            const paymentPayload = {
-                orderId: orderId, // from backend order creation response
-                paymentMethod: selectedPaymentMethod,
-                amount: totalOrderValue
-            };
-
-            try {
-                const paymentResponse = await fetch(PAYMENT_API_URL, {
+            // --- Step 2: Assign Agent via Delivery Service ---
+            if (createdOrderId) {
+                console.log(`--- Assigning agent for Order ID: ${createdOrderId} via Delivery Service ---`);
+                const deliveryAssignResponse = await fetch(`${DELIVERY_API_URL}/assign/${createdOrderId}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${auth.jwtToken}`
-                    },
-                    body: JSON.stringify(paymentPayload)
+                    }
                 });
 
-                if (!paymentResponse.ok) {
-                    const errorText = await paymentResponse.text();
-                    let errorMessage = `Payment failed! Status: ${paymentResponse.status}`;
-                    try {
-                        const errorJson = JSON.parse(errorText);
-                        errorMessage += ` - ${errorJson.message || errorJson.error || 'Unknown backend error'}`;
-                    } catch (e) {
-                        errorMessage += ` - ${errorText}`;
-                    }
-                    throw new Error(errorMessage);
+                if (!deliveryAssignResponse.ok) {
+                    const errorText = await deliveryAssignResponse.text();
+                    console.error('Raw backend delivery assign response on error:', errorText);
+                    throw new Error(`Agent assignment failed: ${deliveryAssignResponse.status} - ${errorText}`);
                 }
 
-                const paymentResult = await paymentResponse.json();
-                console.log('Payment processed successfully:', paymentResult);
-
-                // Optionally, update your localStorage cache with payment status if needed:
-                // (You can add payment status to the cached order here)
-
-            } catch (err) {
-                setError(`Payment failed: ${err.message}`);
-                setLoading(false);
-                return; // Stop further processing if payment fails
+                assignedDelivery = await deliveryAssignResponse.json();
+                console.log("Agent assigned successfully. Delivery Details:", assignedDelivery);
+            } else {
+                throw new Error("Order ID not received from Order Service, cannot assign agent.");
             }
 
-            // Simulate status change after 30 minutes (1800000 ms)
-            // For testing, you can use a shorter duration, e.g., 5000 ms (5 seconds)
-            const deliveryTimeMs = 1800000; // 30 minutes
-            // const deliveryTimeMs = 5000; // For testing (5 seconds)
+            setSuccessMessage("Order Placed and Agent Assigned Successfully!");
+            setCartItems([]); // Clear cart after successful order
 
-            setTimeout(() => {
-                // Update the status of the order in localStorage to DELIVERED
-                const currentStoredOrders = JSON.parse(localStorage.getItem('expressbite_orders_cache') || '{}');
-                const updatedStoredOrders = {
-                    ...currentStoredOrders,
-                    [orderId]: { ...currentStoredOrders[orderId], status: "DELIVERED" }
+            // --- Store full order details in localStorage as a MAP for OrderMgmt to access ---
+            // Fetch existing map, add new order, save back
+            let storedOrdersMap = {};
+            try {
+                storedOrdersMap = JSON.parse(localStorage.getItem('expressbite_orders_map') || '{}');
+            } catch (e) {
+                console.error("Error parsing expressbite_orders_map from localStorage:", e);
+                storedOrdersMap = {}; // Reset to empty object if parsing fails
+            }
+            
+            const detailedOrderForStorage = {
+                orderId: createdOrderId, // Use the ID from the backend
+                userId: auth.userEmail, // Store user's email for identification (assuming this is your userId from auth)
+                restaurantID: cartItems[0]?.restaurantID,
+                restaurantName: null, // Will fetch this in OrderMgmt
+                totalAmount: cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+                status: assignedDelivery.status || "PENDING", // Use assigned status from delivery service
+                deliveryDetails: deliveryInfo, // Store delivery form details
+                paymentMethod: selectedPaymentMethod,
+                orderItems: cartItems, // Store the actual cart items (food items)
+                orderTime: new Date().toISOString(),
+                deliveryId: assignedDelivery.deliveryId, // Store delivery ID from backend
+                agentId: assignedDelivery.agentId // Store agent ID from backend
+            };
+            storedOrdersMap[createdOrderId] = detailedOrderForStorage; // Store using orderId as key
+            localStorage.setItem('expressbite_orders_map', JSON.stringify(storedOrdersMap));
+            console.log("Full order details stored in localStorage (map):", storedOrdersMap);
+
+            // --- Schedule automatic status update to "DELIVERED" after 1 minute ---
+            if (assignedDelivery?.deliveryId && auth.jwtToken) {
+                const deliveryIdToUpdate = assignedDelivery.deliveryId;
+                const token = auth.jwtToken;
+                
+                // Define the function to update status
+                const updateDeliveryStatusToDelivered = async () => {
+                    console.log(`--- SIMULATION: Attempting to update Delivery ID ${deliveryIdToUpdate} to DELIVERED ---`);
+                    try {
+                        const statusUpdateResponse = await fetch(`${DELIVERY_API_URL}/${deliveryIdToUpdate}/status?status=Delivered`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+
+                        if (!statusUpdateResponse.ok) {
+                            const errorText = await statusUpdateResponse.text();
+                            console.error('Failed to auto-update delivery status:', errorText);
+                            // Optionally, update frontend error state or show a more subtle notification
+                        } else {
+                            const updatedDelivery = await statusUpdateResponse.json();
+                            console.log(`--- SIMULATION: Delivery ID ${deliveryIdToUpdate} successfully updated to DELIVERED. New status: ${updatedDelivery.status} ---`);
+                            // Since OrderMgmt polls, it should reflect the change, but you could explicitly trigger a re-fetch here if needed
+                        }
+                    } catch (updateErr) {
+                        console.error('Error during auto-update delivery status:', updateErr);
+                    }
                 };
-                localStorage.setItem('expressbite_orders_cache', JSON.stringify(updatedStoredOrders));
-                console.log(`--- SIMULATION: Order ID ${orderId || 'Unknown'} status updated to DELIVERED in localStorage ---`);
-            }, deliveryTimeMs);
 
-            setTimeout(() => {
-                setSuccessMessage(null); // Clear success message after delay
-                navigate('/order'); // Navigate to My Orders page
-            }, 3000); // Show success message for 3 seconds, then navigate
+                // Schedule the update after 1 minute
+                setTimeout(updateDeliveryStatusToDelivered, 60000); // 60,000 ms = 1 minute
+            }
+
+            // --- Redirect to Delivery Tracking Page ---
+            if (createdOrderId && assignedDelivery?.deliveryId && assignedDelivery?.agentId) {
+                setTimeout(() => {
+                    setSuccessMessage(null); // Clear message before redirect
+                    navigate('/delivery-tracking', {
+                        state: {
+                            orderId: createdOrderId,
+                            deliveryId: assignedDelivery.deliveryId,
+                            agentId: assignedDelivery.agentId,
+                        }
+                    });
+                }, 2000); // Show success message for 2 seconds, then navigate
+            } else {
+                // Fallback: if assignment details are missing, navigate to orders list
+                setTimeout(() => {
+                    setSuccessMessage(null);
+                    navigate('/order');
+                }, 2000);
+            }
 
         } catch (err) {
-            console.error('Error placing order:', err);
+            console.error('Error placing order or assigning agent:', err);
             setError(
                 `Failed to place order: ${err.message}. Please check: \n\n` +
-                `1. **Order Service Running?**: Ensure your Order Service is active. \n` +
-                `2. **API Gateway Config**: Is the route \`/order\` correctly mapped? \n` +
-                `3. **CORS on Backend**: Ensure CORS is configured for your frontend. \n` +
-                `4. **Order Payload Match**: Does the backend's Order DTO/entity exactly match the payload being sent? \n` +
+                `1. **Backend Services (Order, Delivery) Running?**: Ensure all necessary services are active. \n` +
+                `2. **API Gateway Config**: Are /order and /delivery routes correctly mapped? \n` +
+                `3. **CORS on Backend**: Ensure CORS is configured for your frontend on all relevant services. \n` +
+                `4. **Backend Logic**: Does the /delivery/assign/{orderId} endpoint return the Delivery object with deliveryId and agentId? Are agents available? \n` +
+                `5. **Order Payload Match**: Does your backend's Order entity/DTO accept the 'email' field and other required fields? \n` +
                 `(Error: ${err.message})`
             );
         } finally {
@@ -338,7 +344,7 @@ const CheckoutPage = () => {
                         <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
                         <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
                     </svg>
-                    Processing order...
+                    Processing your order and assigning a delivery agent...
                 </div>
                 <Footer />
             </div>
