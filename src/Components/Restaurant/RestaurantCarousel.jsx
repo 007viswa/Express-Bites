@@ -1,7 +1,7 @@
 // Components/RestaurantCarousel.jsx
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../RestaurantCarousel.css'; // Your CSS file
+import './RestaurantCarousel.css'; // Your CSS file
 
 // IMPORTANT: Ensure these paths are correct relative to THIS RestaurantCarousel.jsx file
 // For example, if RestaurantCarousel.jsx is in src/Components, then ../../public goes to src/public
@@ -12,7 +12,7 @@ import res4 from '/res4.jpg';
 import res5 from '/res5.jpg';
 import res6 from '/res6.jpg';
 
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 // Array of local image imports to cycle through
 const localRestaurantImages = [res1, res2, res3, res4, res5, res6];

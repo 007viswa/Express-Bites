@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../OrderMgmt.css';
-import { useAuth } from '../context/AuthContext';
-import Footer from './Footer';
+import './OrderMgmt.css';
+import { useAuth } from '../../context/AuthContext';
+import Footer from '../Home/Footer';
 import OrderDetailModal from './OrderDetailModal';
 
 const OrderMgmt = () => {
@@ -247,7 +247,6 @@ const OrderMgmt = () => {
                             <option value="All">All</option>
                             <option value="PENDING">Pending</option>
                             <option value="DELIVERED">Delivered</option>
-                            {/* Removed IN_PROGRESS and CANCELLED from dropdown */}
                         </select>
                         <div className="dropdown-arrow">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

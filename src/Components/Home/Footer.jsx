@@ -1,9 +1,9 @@
 // Components/Footer.jsx
 import React from 'react';
 // Restored original local image imports
-import pacmanWhiteLogo from '../logos/pacman-white.png';
-import appStoreBadge from '../logos/app-store-badge.svg';
-import googlePlayBadge from '../logos/google-play-badge.svg';
+import pacmanWhiteLogo from '../../logos/pacman-white.png';
+import appStoreBadge from '../../logos/app-store-badge.svg';
+import googlePlayBadge from '../../logos/google-play-badge.svg';
 
 function Footer() {
     return (

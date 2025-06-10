@@ -1,10 +1,10 @@
 // Components/CheckoutPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import Header from './Header';
-import Footer from './Footer';
-import '../CheckoutPage.css'; // The CSS file for this component
+import { useAuth } from '../../context/AuthContext';
+import Header from '../Header/Header';
+import Footer from '../Home/Footer';
+import './CheckoutPage.css'; // The CSS file for this component
 
 const CheckoutPage = () => {
     const location = useLocation();
@@ -290,8 +290,8 @@ const CheckoutPage = () => {
                     }
                 };
 
-                // Schedule the update after 1 minute
-                setTimeout(updateDeliveryStatusToDelivered, 60000); // 60,000 ms = 1 minute
+                // Schedule the update after 10 seconds
+                setTimeout(updateDeliveryStatusToDelivered, 10000); 
             }
 
             // --- Redirect to Delivery Tracking Page ---

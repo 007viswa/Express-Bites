@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import '../ManageMenuItems.css';
+import { useAuth } from '../../context/AuthContext';
+import './ManageMenuItems.css';
 
 function ManageMenuItems() {
     const navigate = useNavigate();

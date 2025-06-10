@@ -1,10 +1,7 @@
 // Components/LoginPopup.jsx
 import React, { useState, useEffect, useContext } from 'react';
-import '../LoginPopup.css'; // Import the CSS file
-
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheckCircle } from '@fortawesome/free-solid-svg-icons'; // Still needed for signup success message if it's kept, but not for login
-import { AuthContext } from '../context/AuthContext';
+import './LoginPopup.css'; // Import the CSS file
+import { AuthContext } from '../../context/AuthContext';
 
 // Accept a new prop: triggerContext and onLoginSuccess
 function LoginPopup({ onClose, triggerContext, onLoginSuccess }) {

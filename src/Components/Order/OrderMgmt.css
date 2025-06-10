@@ -170,7 +170,7 @@
 }
 
 /* Status specific colors */
-.order-status.status-pending { background-color: #ffc107; /* Yellow/Orange */ }
+.order-status.status-pending { background-color: #ebeae6; /* Yellow/Orange */ }
 /* Removed .status-in-progress */
 .order-status.status-delivered { background-color: #ececec; /* Green */ }
 /* Removed .status-cancelled */

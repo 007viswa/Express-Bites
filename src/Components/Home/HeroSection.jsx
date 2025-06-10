@@ -1,16 +1,18 @@
 // Components/HeroSection.jsx
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext'; // Make sure this path is correct relative to HeroSection.jsx
+import { useAuth } from '../../context/AuthContext'; // Make sure this path is correct relative to HeroSection.jsx
 
 // IMPORTANT: Ensure these paths are correct relative to THIS HeroSection.jsx file
-import Biriyani from '../Food items/Biriyani.avif';
-import food2 from '../Food items/2.png';
-import food1 from '../Food items/food1.png';
-import dosa1 from '../Food items/dosa1.png';
+import Biriyani from '../../Food items/Biriyani.avif';
+import food2 from '../../Food items/2.png';
+import food1 from '../../Food items/food1.png';
+import dosa1 from '../../Food items/dosa1.png';
 
 function HeroSection({ onOrderNowClick }) { // Receive the click handler as a prop
   const auth = useAuth(); // Access the authentication context
-
+  
+    // Handler for the "Order Now" button click (defined in Home, called from HeroSection)
+    
   const images = [
     Biriyani,
     food2,

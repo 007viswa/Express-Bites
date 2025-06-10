@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import '../ManageRestaurants.css'; // New CSS file for this component
+import { useAuth } from '../../context/AuthContext';
+import './ManageRestaurants.css'; // New CSS file for this component
 
 function ManageRestaurants() {
     const navigate = useNavigate();

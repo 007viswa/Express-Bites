@@ -1,23 +1,23 @@
-import { Routes, Route, BrowserRouter as Router, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import React, { useState } from 'react';
-import Home from './Components/Home';
-import OrderMgmt from './Components/OrderMgmt';
-import AboutUs from './Components/AboutUs';
-import PartnerWithUs from './Components/PartnerWithUs';
-import HowItWorks from './Components/HowItWorks';
-import LoginPopup from './Components/LoginPopup';
-import AdminDashboard from './Components/AdminDashboard';
+import Home from './Components/Home/Home';
+import OrderMgmt from './Components/Order/OrderMgmt';
+import AboutUs from './Components/Header/AboutUs';
+import PartnerWithUs from './Components/Header/PartnerWithUs';
+import HowItWorks from './Components/Header/HowItWorks';
+import LoginPopup from './Components/Login/LoginPopup';
+import AdminDashboard from './Components/Admin/AdminDashboard';
 import { useAuth } from './context/AuthContext'; // Import useAuth
-import MenuPage from './Components/MenuPage';
-import Header from './Components/Header';
-import Unauthorized from './Components/Unauthorized';
-import RestaurantCarousel from './Components/RestaurantCarousel'; // Import RestaurantCarousel
-import CheckoutPage from './Components/CheckoutPage';
-import Profile from './Components/Profile';
-import ManageRestaurants from './Components/ManageRestaurants'; // Import ManageRestaurants
-import ManageMenuItems from './Components/ManageMenuItems'; 
-import ManageUsers from './Components/ManageUsers';// Import ManageMenuItems
-import DeliveryTrackingPage from './Components/DeliveryTrackingPage'; // <-- NEW IMPORT
+import MenuPage from './Components/Menu/MenuPage';
+import Header from './Components/Header/Header';
+import Unauthorized from './Components/Protected/Unauthorized';
+import RestaurantCarousel from './Components/Restaurant/RestaurantCarousel'; // Import RestaurantCarousel
+import CheckoutPage from './Components/Checkout/CheckoutPage';
+import Profile from './Components/Profile/Profile';
+import ManageRestaurants from './Components/ManageComponents/ManageRestaurants'; // Import ManageRestaurants
+import ManageMenuItems from './Components/ManageComponents/ManageMenuItems'; 
+import ManageUsers from './Components/ManageComponents/ManageUsers';// Import ManageMenuItems
+import DeliveryTrackingPage from './Components/Delivery/DeliveryTrackingPage'; // <-- NEW IMPORT
 
 const PrivateRoute = ({ children, roles }) => {
     const auth = useAuth(); // Ensure useAuth is accessible here

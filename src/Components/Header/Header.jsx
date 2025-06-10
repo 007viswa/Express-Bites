@@ -1,8 +1,8 @@
 // src/Components/Header.jsx
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom'; // Import Link and useLocation
-import pacmanWhiteLogo from '../logos/pacman-white.png';
-import { useAuth } from '../context/AuthContext';
+import pacmanWhiteLogo from '../../logos/pacman-white.png';
+import { useAuth } from '../../context/AuthContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'; // Import FontAwesomeIcon
 import { faUser } from '@fortawesome/free-solid-svg-icons'; // Import the user icon
 import { useNavigate } from 'react-router-dom'; // Import useNavigate for navigation

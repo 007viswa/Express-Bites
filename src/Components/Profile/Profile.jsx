@@ -1,8 +1,8 @@
 // src/Components/ProfilePage.jsx
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext'; // Adjust path if needed
-import Header from './Header'; // Adjust path if needed
-import '../Profile.css'; // Ensure this CSS file is present
+import { useAuth } from '../../context/AuthContext'; // Adjust path if needed
+import Header from '../Header/Header'; // Adjust path if needed
+import './Profile.css'; // Ensure this CSS file is present
  
 const Profile = () => {
     const { isLoggedIn, jwtToken, userEmail: authUserEmail, isLoading,logout } = useAuth();

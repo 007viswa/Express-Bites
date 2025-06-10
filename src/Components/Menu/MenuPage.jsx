@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import Header from './Header'; // Assuming Header is in the same directory
-import '../MenuPage.css';
-import '../Cart.css';
-import Cart from './Cart';
+import { useAuth } from '../../context/AuthContext';
+import Header from '../Header/Header'; // Assuming Header is in the same directory
+import './MenuPage.css';
+import '../Cart/Cart.css';
+import Cart from '../Cart/Cart';
 
 const MenuPage = () => {
   const { restaurantId } = useParams();

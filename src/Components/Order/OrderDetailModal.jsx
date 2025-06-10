@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes, faMotorcycle, faUtensils, faMapMarkerAlt, faCreditCard, faClock, faUser } from '@fortawesome/free-solid-svg-icons';
-import '../OrderDetailModal.css'; // CORRECT: Import its OWN CSS file for modal styling
+import './OrderDetailModal.css'; // CORRECT: Import its OWN CSS file for modal styling
 
 const OrderDetailModal = ({ order, onClose }) => {
     const navigate = useNavigate();

@@ -1,7 +1,7 @@
 // src/Components/HowItWorks.jsx
 import React from 'react';
-import Header from './Header'; // Import Header
-import Footer from './Footer'; // Import Footer
+import Header from '../Header/Header'; // Import Header
+import Footer from '../Home/Footer'; // Import Footer
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSearch, faShoppingBasket, faBiking } from '@fortawesome/free-solid-svg-icons';
 import { Link } from 'react-router-dom';

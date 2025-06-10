@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
-import '../MenuPage.css'; // Import the shared CSS file
+import '../Menu/MenuPage.css'; // Import the shared CSS file
 
 const Cart = ({
   cartItems,

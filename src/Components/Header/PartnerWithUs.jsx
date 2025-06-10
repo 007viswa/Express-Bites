@@ -1,7 +1,7 @@
 // src/Components/PartnerWithUs.jsx
 import React from 'react';
-import Header from './Header'; // Import Header
-import Footer from './Footer'; // Import Footer
+import Header from '../Header/Header'; // Import Header
+import Footer from '../Home/Footer'; // Import Footer
 
 const PartnerWithUs = ({ onSignInClick }) => {
   return (

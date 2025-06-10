@@ -467,7 +467,14 @@ body {
   margin: 5px 0;
 }
 
+.quote{
+ text-align: center;
+ font-family: cursive;
+}
 
+.quote li {
+  list-style: none;
+}
 /* Responsive adjustments for the footer */
 @media (max-width: 992px) {
   .footer-grid {
